@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Map as MapIcon,
   BarChart3,
@@ -394,6 +394,9 @@ export default function App() {
     if (existing) {
       handleSelectActiveLayer(existing.id);
       setCurrentView('map');
+      setTimeout(() => {
+        setZoomToTrigger({ layerId: existing.id, timestamp: Date.now() });
+      }, 120);
       return;
     }
 
@@ -420,13 +423,30 @@ export default function App() {
         });
         setActiveLayerId(matched.id);
         setCurrentView('map');
-        setTimeout(() => setFitAllTrigger((t) => t + 1), 150);
+        setTimeout(() => {
+          setZoomToTrigger({ layerId: matched.id, timestamp: Date.now() });
+          setFitAllTrigger((t) => t + 1);
+        }, 150);
         return;
       }
     }
 
     setCurrentView('map');
   }, [layers, activeLayer, handleSelectActiveLayer]);
+
+  // When switching from Dashboard to Spatial Map, automatically zoom to active layer extent
+  const prevViewRef = useRef(currentView);
+  useEffect(() => {
+    if (prevViewRef.current === 'npgt' && currentView === 'map') {
+      const targetLayer = activeLayer || layers.find((l) => l.visible) || layers[0];
+      if (targetLayer) {
+        setTimeout(() => {
+          setZoomToTrigger({ layerId: targetLayer.id, timestamp: Date.now() });
+        }, 120);
+      }
+    }
+    prevViewRef.current = currentView;
+  }, [currentView, activeLayer, layers]);
   // Check if any layer has NPGT data
   const hasNpgtData = layers.some((l) => l.hasNpgt);
   const npgtSplitLayers = layers.filter((l) => Boolean(l.npgtKey));

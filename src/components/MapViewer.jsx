@@ -900,6 +900,21 @@ export default function MapViewer({
     }
   }, [zoomToTrigger, layers]);
 
+  // 6b. Auto-zoom to active layer (or first visible layer) extent on initial mount
+  const hasAutoZoomedOnMountRef = useRef(false);
+  useEffect(() => {
+    if (!mapInstanceRef.current || hasAutoZoomedOnMountRef.current) return;
+    const target = layers.find((l) => l.id === activeLayerId) || layers.find((l) => l.visible) || layers[0];
+    if (target?.data) {
+      const { leafletBounds, isValid } = calculateBBox(target.data);
+      if (isValid) {
+        hasAutoZoomedOnMountRef.current = true;
+        mapInstanceRef.current.invalidateSize();
+        mapInstanceRef.current.fitBounds(leafletBounds, { padding: [40, 40], maxZoom: 16 });
+      }
+    }
+  }, [layers, activeLayerId]);
+
   // 7. Measurement Mode Handling
   useEffect(() => {
     if (!mapInstanceRef.current || !measureGroupRef.current) return;

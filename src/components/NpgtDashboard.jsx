@@ -46,13 +46,8 @@ export default function NpgtDashboard({
   const [activeIndicator, setActiveIndicator] = useState('KSPOLA');
   const [useDemoMode, setUseDemoMode] = useState(false);
 
-  // Collapsible cards state for analysis groups (default: all open)
-  const [openGroups, setOpenGroups] = useState({
-    0: true,
-    1: true,
-    2: true,
-    3: true
-  });
+  // Collapsible cards state for analysis groups (default: all collapsed)
+  const [openGroups, setOpenGroups] = useState({});
 
   const toggleGroup = (gIndex) => {
     setOpenGroups((prev) => ({
@@ -62,17 +57,17 @@ export default function NpgtDashboard({
   };
 
   const handleToggleAllGroups = () => {
-    const allOpen = groups.every((_, i) => openGroups[i] !== false);
+    const hasAnyOpen = groups.some((_, i) => Boolean(openGroups[i]));
     const next = {};
     groups.forEach((_, i) => {
-      next[i] = !allOpen;
+      next[i] = !hasAnyOpen;
     });
     setOpenGroups(next);
   };
 
   const handleSelectIndicator = (indKey, groupIndex) => {
     setActiveIndicator(indKey);
-    if (groupIndex !== undefined && openGroups[groupIndex] === false) {
+    if (groupIndex !== undefined && !openGroups[groupIndex]) {
       setOpenGroups((prev) => ({ ...prev, [groupIndex]: true }));
     }
   };
@@ -485,7 +480,7 @@ export default function NpgtDashboard({
                 onClick={handleToggleAllGroups}
                 className="text-[11px] font-medium text-slate-400 hover:text-teal-300 transition-colors cursor-pointer"
               >
-                {groups.every((_, i) => openGroups[i] !== false) ? 'Tutup Semua' : 'Buka Semua'}
+                {groups.some((_, i) => Boolean(openGroups[i])) ? 'Tutup Semua' : 'Buka Semua'}
               </button>
             </div>
 
@@ -493,7 +488,7 @@ export default function NpgtDashboard({
             <div className="space-y-3">
               {groups.map((groupTitle, gIndex) => {
                 const groupAttrs = indicators.filter((a) => a.group === gIndex);
-                const isOpen = openGroups[gIndex] !== false;
+                const isOpen = Boolean(openGroups[gIndex]);
                 const hasActiveIndicator = groupAttrs.some((a) => a.key === activeIndicator);
 
                 return (
