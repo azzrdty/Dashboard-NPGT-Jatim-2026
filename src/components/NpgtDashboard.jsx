@@ -8,6 +8,7 @@ import {
   Sparkles,
   Info,
   ChevronRight,
+  ChevronDown,
   MapPin,
   Building,
   Layers,
@@ -44,6 +45,37 @@ export default function NpgtDashboard({
   const [unitMode, setUnitMode] = useState('ha'); // 'ha' | 'count'
   const [activeIndicator, setActiveIndicator] = useState('KSPOLA');
   const [useDemoMode, setUseDemoMode] = useState(false);
+
+  // Collapsible cards state for analysis groups (default: all open)
+  const [openGroups, setOpenGroups] = useState({
+    0: true,
+    1: true,
+    2: true,
+    3: true
+  });
+
+  const toggleGroup = (gIndex) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [gIndex]: !prev[gIndex]
+    }));
+  };
+
+  const handleToggleAllGroups = () => {
+    const allOpen = groups.every((_, i) => openGroups[i] !== false);
+    const next = {};
+    groups.forEach((_, i) => {
+      next[i] = !allOpen;
+    });
+    setOpenGroups(next);
+  };
+
+  const handleSelectIndicator = (indKey, groupIndex) => {
+    setActiveIndicator(indKey);
+    if (groupIndex !== undefined && openGroups[groupIndex] === false) {
+      setOpenGroups((prev) => ({ ...prev, [groupIndex]: true }));
+    }
+  };
 
   // Check if layer has real NPGT features (use sourceData if layer is dissolved per indicator)
   const rawFeatures = (layer?.sourceData || layer?.data)?.features || [];
@@ -437,134 +469,196 @@ export default function NpgtDashboard({
 
         {/* 2-Column Workspace: Left Indicators & Right Details */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Indicators in Groups */}
-          <div className="lg:col-span-5 rounded-xl bg-[#0B111A] border border-white/[0.08] p-4 space-y-4">
-            {groups.map((groupTitle, gIndex) => {
-              const groupAttrs = indicators.filter((a) => a.group === gIndex);
-              return (
-                <div key={gIndex} className="space-y-2">
-                  <div className="flex items-center justify-between px-2">
-                    <h3 className="text-xs font-semibold text-slate-300 tracking-tight">
-                      {groupTitle}
-                    </h3>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {groupAttrs.length} layer
-                    </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {groupAttrs.map((a) => {
-                      const isActive = a.key === activeIndicator;
-                      const stat = indicatorStats[a.key];
-                      const topCat = stat?.list?.[0];
+          {/* Left Column: Indicators in Collapsible Cards */}
+          <div className="lg:col-span-5 space-y-3">
+            {/* Header Toolbar */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <Layers className="size-3.5 text-teal-400" />
+                <span className="text-xs font-bold text-white tracking-tight">Pilihan Analisis NPGT</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-slate-800 text-[10px] font-mono text-teal-300 border border-slate-700/60">
+                  {indicators.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleAllGroups}
+                className="text-[11px] font-medium text-slate-400 hover:text-teal-300 transition-colors cursor-pointer"
+              >
+                {groups.every((_, i) => openGroups[i] !== false) ? 'Tutup Semua' : 'Buka Semua'}
+              </button>
+            </div>
 
-                      return (
-                        <button
-                          key={a.key}
-                          type="button"
-                          onClick={() => setActiveIndicator(a.key)}
-                          className={`w-full text-left p-3 rounded-xl transition-all border ${
-                            isActive
-                              ? 'bg-teal-500/10 border-teal-500/45 shadow-sm'
-                              : 'bg-[#070B10]/70 border-white/[0.06] hover:bg-white/[0.03] hover:border-white/[0.12]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-white">{a.title}</span>
-                            {a.isLandUse && hasQreklas ? (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center rounded-md bg-slate-900 p-0.5 border border-slate-700/80 shrink-0"
-                              >
-                                {['QNAME5', 'QREKLAS'].map((mode) => {
-                                  const active = effectiveLandUseMode === mode;
-                                  return (
-                                    <span
-                                      key={mode}
-                                      role="button"
-                                      tabIndex={0}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleChangeLandUseMode(mode);
-                                        setActiveIndicator(a.key);
-                                      }}
-                                      className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold transition-all cursor-pointer ${
-                                        active
-                                          ? 'bg-teal-400 text-slate-950 shadow-xs'
-                                          : 'text-slate-400 hover:text-white'
-                                      }`}
-                                    >
-                                      {mode}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : a.isLandCapability && hasCapability ? (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center rounded-md bg-slate-900 p-0.5 border border-slate-700/80 shrink-0"
-                              >
-                                {CAPABILITY_MODES.map(({ mode, title }) => {
-                                  const active = capabilityMode === mode;
-                                  return (
-                                    <span
-                                      key={mode}
-                                      role="button"
-                                      tabIndex={0}
-                                      title={title}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleChangeCapabilityMode(mode);
-                                        setActiveIndicator(a.key);
-                                      }}
-                                      className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold transition-all cursor-pointer ${
-                                        active
-                                          ? 'bg-teal-400 text-slate-950 shadow-xs'
-                                          : 'text-slate-400 hover:text-white'
-                                      }`}
-                                    >
-                                      {mode}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] font-mono text-teal-300 px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/25">
-                                {a.key}
+            {/* Collapsible Group Cards */}
+            <div className="space-y-3">
+              {groups.map((groupTitle, gIndex) => {
+                const groupAttrs = indicators.filter((a) => a.group === gIndex);
+                const isOpen = openGroups[gIndex] !== false;
+                const hasActiveIndicator = groupAttrs.some((a) => a.key === activeIndicator);
+
+                return (
+                  <div
+                    key={gIndex}
+                    className={`rounded-xl border transition-all overflow-hidden ${
+                      hasActiveIndicator
+                        ? 'bg-[#0B111A] border-teal-500/35 shadow-md ring-1 ring-teal-500/15'
+                        : 'bg-[#0B111A] border-white/[0.08] hover:border-white/[0.14]'
+                    }`}
+                  >
+                    {/* Collapsible Card Header */}
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(gIndex)}
+                      className="w-full flex items-center justify-between p-3.5 text-left hover:bg-white/[0.02] transition-colors select-none group/hdr cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xs font-semibold text-white tracking-tight">
+                              {groupTitle}
+                            </h3>
+                            {hasActiveIndicator && (
+                              <span className="flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-teal-500/15 border border-teal-500/30 text-[9px] font-medium text-teal-300">
+                                <span className="size-1 rounded-full bg-teal-400 animate-pulse" />
+                                Aktif
                               </span>
                             )}
                           </div>
+                        </div>
+                      </div>
 
-                          {/* Area-Proportional Segment Bar */}
-                          <div className="flex h-2 w-full rounded-full overflow-hidden mt-2 bg-slate-800 gap-0.5">
-                            {stat?.list?.map((item) => (
-                              <div
-                                key={item.label}
-                                style={{
-                                  flex: item.value,
-                                  backgroundColor: item.color
-                                }}
-                                title={`${item.label}: ${formatNumber(item.value)} Ha`}
-                              />
-                            ))}
-                          </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-400">
+                          {groupAttrs.length} analisis
+                        </span>
+                        <div
+                          className={`size-6 rounded-md grid place-items-center text-slate-400 group-hover/hdr:text-white transition-transform duration-200 ${
+                            isOpen ? 'rotate-180 text-teal-400' : ''
+                          }`}
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </div>
+                      </div>
+                    </button>
 
-                          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
-                            <span className="truncate max-w-[200px]">
-                              {topCat ? topCat.label : '-'}
-                            </span>
-                            <span className="font-mono tabular-nums text-slate-300">
-                              {topCat && stat.tot
-                                ? `${formatNumber(topCat.value)} Ha (${Math.round((topCat.value / stat.tot) * 100)}%)`
-                                : '0%'}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {/* Collapsible Card Body */}
+                    {isOpen && (
+                      <div className="p-3 pt-0 space-y-1.5 border-t border-white/[0.04] bg-[#070B10]/40">
+                        {groupAttrs.map((a) => {
+                          const isActive = a.key === activeIndicator;
+                          const stat = indicatorStats[a.key];
+                          const topCat = stat?.list?.[0];
+
+                          return (
+                            <button
+                              key={a.key}
+                              type="button"
+                              onClick={() => handleSelectIndicator(a.key, gIndex)}
+                              className={`w-full text-left p-3 rounded-xl transition-all border ${
+                                isActive
+                                  ? 'bg-teal-500/10 border-teal-500/45 shadow-sm'
+                                  : 'bg-[#070B10]/70 border-white/[0.06] hover:bg-white/[0.03] hover:border-white/[0.12]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-white">{a.title}</span>
+                                {a.isLandUse && hasQreklas ? (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center rounded-md bg-slate-900 p-0.5 border border-slate-700/80 shrink-0"
+                                  >
+                                    {['QNAME5', 'QREKLAS'].map((mode) => {
+                                      const active = effectiveLandUseMode === mode;
+                                      return (
+                                        <span
+                                          key={mode}
+                                          role="button"
+                                          tabIndex={0}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleChangeLandUseMode(mode);
+                                            handleSelectIndicator(a.key, gIndex);
+                                          }}
+                                          className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold transition-all cursor-pointer ${
+                                            active
+                                              ? 'bg-teal-400 text-slate-950 shadow-xs'
+                                              : 'text-slate-400 hover:text-white'
+                                          }`}
+                                        >
+                                          {mode}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                ) : a.isLandCapability && hasCapability ? (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center rounded-md bg-slate-900 p-0.5 border border-slate-700/80 shrink-0"
+                                  >
+                                    {CAPABILITY_MODES.map(({ mode, title }) => {
+                                      const active = capabilityMode === mode;
+                                      return (
+                                        <span
+                                          key={mode}
+                                          role="button"
+                                          tabIndex={0}
+                                          title={title}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleChangeCapabilityMode(mode);
+                                            handleSelectIndicator(a.key, gIndex);
+                                          }}
+                                          className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-semibold transition-all cursor-pointer ${
+                                            active
+                                              ? 'bg-teal-400 text-slate-950 shadow-xs'
+                                              : 'text-slate-400 hover:text-white'
+                                          }`}
+                                        >
+                                          {mode}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] font-mono text-teal-300 px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/25">
+                                    {a.key}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Area-Proportional Segment Bar */}
+                              <div className="flex h-2 w-full rounded-full overflow-hidden mt-2 bg-slate-800 gap-0.5">
+                                {stat?.list?.map((item) => (
+                                  <div
+                                    key={item.label}
+                                    style={{
+                                      flex: item.value,
+                                      backgroundColor: item.color
+                                    }}
+                                    title={`${item.label}: ${formatNumber(item.value)} Ha`}
+                                  />
+                                ))}
+                              </div>
+
+                              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
+                                <span className="truncate max-w-[200px]">
+                                  {topCat ? topCat.label : '-'}
+                                </span>
+                                <span className="font-mono tabular-nums text-slate-300">
+                                  {topCat && stat.tot
+                                    ? `${formatNumber(topCat.value)} Ha (${Math.round((topCat.value / stat.tot) * 100)}%)`
+                                    : '0%'}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Right Column: Active Indicator / Land Use Breakdown */}
