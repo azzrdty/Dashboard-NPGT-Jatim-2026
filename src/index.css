@@ -1,0 +1,85 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #070b10;
+    color: #f1f5f9;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom Leaflet tooltip & popup styling */
+.leaflet-popup-content-wrapper {
+  background: rgba(11, 17, 26, 0.96) !important;
+  backdrop-filter: blur(12px);
+  color: #f1f5f9 !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.65) !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(11, 17, 26, 0.96) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+.leaflet-tooltip {
+  background: rgba(11, 17, 26, 0.94) !important;
+  backdrop-filter: blur(8px);
+  color: #f8fafc !important;
+  border: 1px solid rgba(45, 212, 191, 0.35) !important;
+  border-radius: 0.5rem !important;
+  padding: 5px 10px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.75rem !important;
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.55) !important;
+}
+
+.leaflet-container {
+  background: #070b10 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(7, 11, 16, 0.75) !important;
+  color: #64748b !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  border-left: 1px solid rgba(148, 163, 184, 0.12);
+  border-top-left-radius: 6px;
+  padding: 2px 8px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #94a3b8 !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
