@@ -175,14 +175,18 @@ export default function App() {
   const handleLoadSample = async (sampleKey) => {
     try {
       setIsUploadOpen(false);
-      let url = '/samples/npgt_djpa_lengkap.geojson';
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+        ? import.meta.env.BASE_URL
+        : `${import.meta.env.BASE_URL}/`;
+
+      let url = `${baseUrl}samples/npgt_djpa_lengkap.geojson`;
       let title = 'Data NPGT DJPA';
 
       if (sampleKey === 'sungai') {
-        url = '/samples/sungai_poligon.zip';
+        url = `${baseUrl}samples/sungai_poligon.zip`;
         title = 'Sungai Poligon 25K';
       } else if (sampleKey === 'ujungpangkah') {
-        url = '/samples/ujungpangkah_admin.zip';
+        url = `${baseUrl}samples/ujungpangkah_admin.zip`;
         title = 'Batas Adm Kec. Ujungpangkah';
       }
 
