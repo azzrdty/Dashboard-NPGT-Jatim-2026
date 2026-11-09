@@ -1,18 +1,987 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WebGIS NPGT &mdash; Neraca Penatagunaan Tanah BPN Jawa Timur</title>
-    <meta name="description" content="Workstation WebGIS analisis geospasial dan 8 indikator Neraca Penatagunaan Tanah (NPGT) Kanwil BPN Provinsi Jawa Timur." />
-    <!-- Google Fonts: Plus Jakarta Sans & IBM Plex Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </head>
-  <body class="bg-[#070B10] text-slate-100 antialiased overflow-hidden select-none">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebGIS NPGT Jawa Timur 2026 &mdash; Kanwil BPN Jawa Timur</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #070B10;
+      color: #F8FAFC;
+    }
+    .font-mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .glass-dock {
+      background: rgba(10, 16, 26, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .glass-card {
+      background: rgba(16, 25, 40, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      background: rgba(24, 38, 60, 0.9);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+    .leaflet-container {
+      background: #070B10 !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+    .leaflet-control-zoom {
+      border: 1px solid rgba(255, 255, 255, 0.12) !important;
+      background: rgba(12, 19, 29, 0.9) !important;
+      backdrop-filter: blur(12px) !important;
+      border-radius: 10px !important;
+      overflow: hidden;
+    }
+    .leaflet-control-zoom a {
+      background: transparent !important;
+      color: #E2E8F0 !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: rgba(56, 189, 248, 0.2) !important;
+      color: #38BDF8 !important;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(7, 11, 16, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+  </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col select-none">
+
+  <!-- TOP HEADER -->
+  <header class="h-16 border-b border-white/10 glass-dock px-4 flex items-center justify-between z-30 shrink-0">
+    <!-- Brand -->
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-sky-400 p-[1px] shadow-lg shadow-blue-500/20 flex items-center justify-center">
+        <div class="w-full h-full bg-[#080E18] rounded-[11px] flex items-center justify-center">
+          <svg class="w-5 h-5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+            WebGIS NPGT Jawa Timur
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 tracking-wider uppercase">
+              BPN DJPA 2026
+            </span>
+          </h1>
+        </div>
+        <p class="text-xs text-slate-400 flex items-center gap-1.5 font-mono">
+          <span>Neraca Penatagunaan Tanah</span>
+          <span class="text-slate-600">&bull;</span>
+          <span class="text-sky-400">Kec. Ujungpangkah, Kab. Gresik</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Center Mode Switcher Tabs -->
+    <div class="hidden md:flex items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 shadow-inner">
+      <button id="tabAnalyticsBtn" onclick="setTab('analytics')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>Analisis NPGT</span>
+      </button>
+      <button id="tabLayersBtn" onclick="setTab('layers')" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all cursor-pointer">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+        <span>Layer &amp; Styling</span>
+      </button>
+    </div>
+
+    <!-- Right HUD & GIS Actions -->
+    <div class="flex items-center gap-2.5">
+      <!-- Live Coordinate HUD -->
+      <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-white/5 text-[11px] font-mono text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="hudCoords">Lat: -6.94500 | Lon: 112.55000</span>
+        <span class="text-slate-600">|</span>
+        <span class="text-sky-400 font-semibold">UTM 49S</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <button onclick="toggleMeasure()" id="measureBtn" class="p-2 sm:px-3 sm:py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer" title="Alat Ukur Jarak & Luas">
+        <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+        <span class="hidden sm:inline">Ukur</span>
+      </button>
+
+      <button onclick="toggleTable()" id="tableBtn" class="p-2 sm:px-3 sm:py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer" title="Tabel Atribut Fitur">
+        <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+        <span class="hidden sm:inline">Tabel</span>
+      </button>
+
+      <button onclick="resetMapView()" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-slate-300 text-xs transition-all cursor-pointer" title="Pusatkan Peta (Extent Ujungpangkah)">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="flex flex-1 relative overflow-hidden">
+    <!-- LEFT SIDEBAR -->
+    <aside id="leftSidebar" class="w-96 border-r border-white/10 z-20 flex flex-col bg-[#0B111B] shadow-2xl overflow-y-auto">
+      
+      <!-- TAB 1: ANALISIS NPGT -->
+      <div id="analyticsTabContent" class="flex flex-col flex-1">
+        <!-- Indicator Header -->
+        <div class="p-4 border-b border-white/10 bg-slate-900/60 sticky top-0 z-10 backdrop-blur-md">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold text-sky-400 tracking-wider uppercase flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+              8 Indikator DJPA ATR/BPN
+            </span>
+            <span id="featureCountBadge" class="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono font-semibold">
+              13 Bidang
+            </span>
+          </div>
+
+          <!-- Indicator Pills Grid -->
+          <div class="grid grid-cols-4 gap-1.5 mb-3" id="indicatorGrid">
+            <!-- Dynamically Rendered -->
+          </div>
+
+          <!-- Active Indicator Description -->
+          <div class="p-3 rounded-xl bg-blue-950/40 border border-blue-500/20 text-xs">
+            <h4 id="indTitle" class="font-bold text-blue-200 flex items-center justify-between">
+              KSPOLA &mdash; Kesesuaian Pola Ruang (RTRW)
+            </h4>
+            <p id="indDesc" class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+              Evaluasi kesesuaian penggunaan tanah aktual terhadap Rencana Tata Ruang Wilayah (RTRW).
+            </p>
+          </div>
+        </div>
+
+        <!-- Filter Desa -->
+        <div class="p-4 border-b border-white/10 bg-slate-900/30">
+          <label class="text-[11px] font-semibold text-slate-300 flex items-center justify-between mb-1.5">
+            <span>Filter Wilayah Desa/Kelurahan</span>
+            <button onclick="resetDesaFilter()" class="text-[10px] text-sky-400 hover:underline cursor-pointer">
+              Reset Semua
+            </button>
+          </label>
+          <select id="desaSelect" onchange="onDesaChange(this.value)" class="w-full bg-slate-800/90 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="">Semua Desa (13 Desa Kec. Ujungpangkah)</option>
+          </select>
+        </div>
+
+        <!-- KPI Metrics -->
+        <div class="p-4 border-b border-white/10">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Ringkasan Neraca Spasial
+          </h3>
+
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="p-3 rounded-xl bg-slate-900/70 border border-white/5">
+              <span class="text-[10px] text-slate-400 uppercase font-mono">Total Luas</span>
+              <div id="kpiTotalHa" class="text-lg font-extrabold text-white font-mono mt-0.5">
+                4,910.8 <span class="text-xs font-normal text-slate-400">Ha</span>
+              </div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-900/70 border border-white/5">
+              <span class="text-[10px] text-slate-400 uppercase font-mono">Jumlah Poligon</span>
+              <div id="kpiPolygonCount" class="text-lg font-extrabold text-sky-400 font-mono mt-0.5">
+                13 <span class="text-xs font-normal text-slate-400">Desa</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multi-Segment Proportion Bar -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+              <span>Proporsi Luas</span>
+              <span class="font-mono text-emerald-400 font-semibold">100%</span>
+            </div>
+            <div id="multiSegmentBar" class="w-full h-3 rounded-full bg-slate-800 overflow-hidden flex p-0.5 gap-0.5">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown List -->
+        <div class="p-4 flex-1">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+            <span>Distribusi Kategori Indikator</span>
+            <span class="text-[10px] text-slate-500 font-normal">Hektar &amp; %</span>
+          </h3>
+          <div id="breakdownList" class="space-y-2">
+            <!-- Dynamically Populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: LAYER & STYLING -->
+      <div id="layersTabContent" class="hidden flex-col p-4 space-y-4">
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/10">
+          <h3 class="text-xs font-bold text-white mb-2 flex items-center gap-2">
+            <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/></svg>
+            Layer Administrasi NPGT
+          </h3>
+          <div class="space-y-3 pt-2 border-t border-white/5">
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Transparansi Isian (Fill Opacity)</span>
+                <span id="opacityLabel" class="font-mono text-sky-400">75%</span>
+              </div>
+              <input type="range" min="0.1" max="1" step="0.05" value="0.75" oninput="updateOpacity(this.value)" class="w-full accent-blue-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Tebal Garis Batas (Stroke)</span>
+                <span id="strokeLabel" class="font-mono text-sky-400">1.5 px</span>
+              </div>
+              <input type="range" min="0.5" max="4" step="0.5" value="1.5" oninput="updateStroke(this.value)" class="w-full accent-blue-500 bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend Card -->
+        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/10">
+          <h3 class="text-xs font-bold text-white mb-3">Legenda Warna Aktif</h3>
+          <div id="activeLegendList" class="space-y-2 text-xs">
+            <!-- Dynamically Populated -->
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAP CONTAINER -->
+    <main class="flex-1 relative h-full w-full">
+      <div id="map" class="w-full h-full z-0 cursor-crosshair"></div>
+
+      <!-- Top Right Floating Controls -->
+      <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <button onclick="toggleBasemapMenu()" class="px-3.5 py-2 rounded-xl glass-dock text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-2 border border-white/10 shadow-xl cursor-pointer hover:border-sky-500/40 transition-all">
+          <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <span>Peta Dasar (Basemap)</span>
+        </button>
+      </div>
+
+      <!-- Basemap Menu Dropdown -->
+      <div id="basemapMenu" class="hidden absolute top-16 right-4 z-30 w-64 glass-dock rounded-2xl p-3 shadow-2xl border border-white/10 space-y-1.5">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 py-1">Pilih Basemap</div>
+        <button onclick="setBasemap('dark')" class="w-full p-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:bg-white/10 flex items-center justify-between cursor-pointer">
+          <span>Carto Dark Matter</span>
+          <span class="text-[10px] text-sky-400 font-mono">BPN Theme</span>
+        </button>
+        <button onclick="setBasemap('satellite')" class="w-full p-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:bg-white/10 flex items-center justify-between cursor-pointer">
+          <span>Esri Satellite</span>
+          <span class="text-[10px] text-amber-400 font-mono">Citra</span>
+        </button>
+        <button onclick="setBasemap('osm')" class="w-full p-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:bg-white/10 flex items-center justify-between cursor-pointer">
+          <span>OpenStreetMap Standard</span>
+          <span class="text-[10px] text-emerald-400 font-mono">Vektor</span>
+        </button>
+        <button onclick="setBasemap('positron')" class="w-full p-2 rounded-lg text-left text-xs font-medium text-slate-200 hover:bg-white/10 flex items-center justify-between cursor-pointer">
+          <span>Carto Positron</span>
+          <span class="text-[10px] text-slate-400 font-mono">Terang</span>
+        </button>
+      </div>
+
+      <!-- Measurement Tools Floating Card -->
+      <div id="measurePanel" class="hidden absolute top-4 left-4 z-20 w-72 glass-dock rounded-2xl p-4 shadow-2xl border border-white/10 space-y-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/></svg>
+            <span>Alat Pengukuran Geospasial</span>
+          </div>
+          <button onclick="toggleMeasure()" class="text-slate-400 hover:text-white">&times;</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="mDistBtn" onclick="setMeasureType('distance')" class="py-1.5 px-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-medium cursor-pointer">Jarak (m/km)</button>
+          <button id="mAreaBtn" onclick="setMeasureType('area')" class="py-1.5 px-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 text-xs font-medium cursor-pointer">Luas (Ha)</button>
+        </div>
+        <div class="p-2.5 rounded-xl bg-slate-900/80 border border-white/5">
+          <span class="text-[10px] uppercase font-mono text-slate-400 block">Hasil Ukur Geodesik:</span>
+          <div id="measureResult" class="text-base font-bold font-mono text-amber-300 mt-0.5">0.00 m</div>
+          <span id="measurePtsCount" class="text-[10px] text-slate-500 font-mono block mt-0.5">0 Titik Diklik</span>
+        </div>
+        <button onclick="clearMeasure()" class="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-white/10 cursor-pointer">Hapus Titik</button>
+      </div>
+
+      <!-- Feature Inspector Card -->
+      <div id="inspectorCard" class="hidden absolute top-4 right-4 z-30 w-96 max-h-[85vh] glass-dock rounded-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div class="p-4 border-b border-white/10 bg-slate-900/80 flex items-start justify-between">
+          <div>
+            <h3 id="inspTitle" class="text-sm font-bold text-white">Nama Desa</h3>
+            <span id="inspSub" class="text-[11px] text-slate-400 font-mono">Kec. Ujungpangkah, Kab. Gresik</span>
+          </div>
+          <button onclick="closeInspector()" class="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white">&times;</button>
+        </div>
+        <div class="p-4 space-y-3 overflow-y-auto flex-1 text-xs">
+          <div class="p-3 rounded-xl bg-slate-900/70 border border-white/5 grid grid-cols-2 gap-2 font-mono">
+            <div>
+              <span class="text-[10px] text-slate-500 block">Luas Wilayah</span>
+              <span id="inspHa" class="text-sm font-bold text-white">0 Ha</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 block">Proyeksi Asli</span>
+              <span class="text-xs font-semibold text-sky-400">UTM 49S</span>
+            </div>
+          </div>
+          <div>
+            <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider block mb-1.5">Nilai 8 Indikator NPGT</span>
+            <div id="inspIndicators" class="space-y-1.5 font-mono text-xs">
+              <!-- Dynamically Populated -->
+            </div>
+          </div>
+          <div class="pt-2 border-t border-white/10 space-y-1.5">
+            <div>
+              <span class="text-[10px] text-slate-500 font-mono block">Penggunaan Aktual</span>
+              <span id="inspGuna" class="text-slate-200 font-medium">-</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 font-mono block">RTRW</span>
+              <span id="inspRtrw" class="text-slate-200 font-medium">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM ATTRIBUTE TABLE -->
+      <div id="attributeTable" class="hidden absolute bottom-0 left-0 right-0 z-40 glass-dock border-t border-white/10 h-72 flex flex-col shadow-2xl">
+        <div class="h-11 border-b border-white/10 px-4 flex items-center justify-between bg-slate-900/90">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-white flex items-center gap-2">
+              <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+              <span>Tabel Atribut NPGT</span>
+              <span id="tableCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-300 font-mono">13 Baris</span>
+            </span>
+            <input type="text" id="tableSearch" oninput="onSearchTable(this.value)" placeholder="Cari desa, indikator, nilai..." class="bg-slate-800 border border-white/10 rounded px-2.5 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 w-60">
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="exportCsv()" class="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium cursor-pointer">
+              Download CSV
+            </button>
+            <button onclick="toggleTable()" class="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white">&times;</button>
+          </div>
+        </div>
+        <div class="flex-1 overflow-auto bg-[#070B10]/95 font-mono text-[11px]">
+          <table class="w-full text-left border-collapse" id="attrTableElement">
+            <thead class="sticky top-0 bg-slate-900 text-slate-400 font-semibold border-b border-white/10 uppercase tracking-wider">
+              <tr>
+                <th class="p-2 text-center w-10">#</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('NAMOBJ')">Desa</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('LUAS_HA')">Luas (Ha)</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('KSPOLA')">KSPOLA</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('COMPATB')">COMPATB</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('OPTNH')">OPTNH</th>
+                <th class="p-2 cursor-pointer hover:text-white" onclick="sortTable('Vname')">Vname</th>
+                <th class="p-2">Guna Tanah Aktual</th>
+                <th class="p-2">Arahan Rekomendasi</th>
+              </tr>
+            </thead>
+            <tbody id="attrTableBody" class="divide-y divide-white/5 text-slate-300">
+              <!-- Dynamically Populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // 13 Villages of Kecamatan Ujungpangkah, Kabupaten Gresik, Jawa Timur
+    const SAMPLE_FEATURES = [
+      {
+        type: "Feature",
+        properties: { OBJECTID: 1, NAMOBJ: "Pangkahkulon", WADMKD: "Desa Pangkahkulon", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 412.85, GUNA_TNH: "Tambak & Mangrove Pesisir", RTRW: "Perikanan & Perlindungan Pesisir", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia Bersyarat", V_Arahan: "Diarahkan Perikanan Berkelanjutan", V_Khusus: "Kawasan Lindung Pesisir", REKOMTNH: "Pertahankan Tambak Silvofishery", PASET: "Penataan Akses Nelayan" },
+        geometry: { type: "Polygon", coordinates: [[[112.535, -6.915], [112.555, -6.912], [112.562, -6.928], [112.548, -6.938], [112.532, -6.929], [112.535, -6.915]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 2, NAMOBJ: "Pangkahwetan", WADMKD: "Desa Pangkahwetan", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 528.40, GUNA_TNH: "Muara Bengawan Solo & Ekowisata Mangrove", RTRW: "Kawasan Suaka Pesisir & Wisata Bahari", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tidak Tersedia", V_Arahan: "Perlindungan Mutlak", V_Khusus: "Kawasan Konservasi Mangrove", REKOMTNH: "Pertahankan Kawasan Konservasi", PASET: "Bukan Potensi Aset" },
+        geometry: { type: "Polygon", coordinates: [[[112.555, -6.912], [112.585, -6.908], [112.592, -6.925], [112.562, -6.928], [112.555, -6.912]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 3, NAMOBJ: "Banyuurip", WADMKD: "Desa Banyuurip", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 365.12, GUNA_TNH: "Tambak Garam & Budidaya Bandeng", RTRW: "Kawasan Pergaraman Rakyat", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia", V_Arahan: "Prioritas I Revitalisasi Tambak", V_Khusus: "Bukan Kawasan Lindung", REKOMTNH: "Intensifikasi Produksi Garam", PASET: "Legalisasi Sertifikasi Hak Garam" },
+        geometry: { type: "Polygon", coordinates: [[[112.520, -6.930], [112.538, -6.925], [112.545, -6.945], [112.525, -6.952], [112.520, -6.930]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 4, NAMOBJ: "Ngimboh", WADMKD: "Desa Ngimboh", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 284.90, GUNA_TNH: "Pemukiman Nelayan & Pangkalan Pendaratan Ikan", RTRW: "Permukiman Perdesaan Pesisir", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia Bersyarat", V_Arahan: "Pengendalian Kepadatan", V_Khusus: "Sempadan Pantai 100m", REKOMTNH: "Penataan Ruang Permukiman Pesisir", PASET: "Program PTSL Tanah Masyarakat" },
+        geometry: { type: "Polygon", coordinates: [[[112.548, -6.938], [112.570, -6.935], [112.568, -6.955], [112.542, -6.958], [112.548, -6.938]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 5, NAMOBJ: "Gosari", WADMKD: "Desa Gosari", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 490.20, GUNA_TNH: "Pertanian Padi & Perkebunan Mangga", RTRW: "Kawasan LP2B", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tidak Tersedia", V_Arahan: "Perlindungan LP2B", V_Khusus: "Kawasan LP2B Terlindungi", REKOMTNH: "Larangan Alih Fungsi Lahan", PASET: "Penataan Akses Sarana Pertanian" },
+        geometry: { type: "Polygon", coordinates: [[[112.510, -6.950], [112.535, -6.945], [112.532, -6.972], [112.505, -6.968], [112.510, -6.950]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 6, NAMOBJ: "Sekapuk", WADMKD: "Desa Sekapuk", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 415.75, GUNA_TNH: "Bekas Tambang Kapur (Setigi) & Tegalan", RTRW: "Wisata & Budidaya", KSPOLA: "Sesuai", COMPATB: "Kurang Kompatibel", OPTNH: "Kurang Optimal", Vname: "Tersedia", V_Arahan: "Prioritas II Reklamasi Pascatambang", V_Khusus: "Kawasan Rawan Longsor Kapur", REKOMTNH: "Rehabilitasi Lingkungan & Wisata Geologi", PASET: "Potensi Redistribusi TCUN" },
+        geometry: { type: "Polygon", coordinates: [[[112.535, -6.945], [112.558, -6.942], [112.555, -6.968], [112.532, -6.972], [112.535, -6.945]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 7, NAMOBJ: "Bolo", WADMKD: "Desa Bolo", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 320.10, GUNA_TNH: "Semak Belukar & Tanah Terlantar", RTRW: "Pengembangan Permukiman & Jasa", KSPOLA: "Belum Sesuai", COMPATB: "Kompatibel", OPTNH: "Belum Optimal", Vname: "Tersedia", V_Arahan: "Prioritas I Penertiban Tanah Terlantar", V_Khusus: "Indikasi Tanah Terlantar", REKOMTNH: "Optimalisasi Pemanfaatan Lahan Tidur", PASET: "Prioritas Redistribusi Tanah (TORA)" },
+        geometry: { type: "Polygon", coordinates: [[[112.558, -6.942], [112.578, -6.940], [112.575, -6.965], [112.555, -6.968], [112.558, -6.942]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 8, NAMOBJ: "Cangaan", WADMKD: "Desa Cangaan", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 298.50, GUNA_TNH: "Gudang Logistik & Industri Non-Polutan", RTRW: "Industri Terbatas", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia Bersyarat", V_Arahan: "Pembatasan AMDAL Ketat", V_Khusus: "Zona Penyangga Lingkungan", REKOMTNH: "Pengawasan Izin Kesesuaian Kegiatan", PASET: "Legalisasi Hak Guna Bangunan" },
+        geometry: { type: "Polygon", coordinates: [[[112.525, -6.968], [112.550, -6.965], [112.545, -6.988], [112.520, -6.985], [112.525, -6.968]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 9, NAMOBJ: "Ketapanglor", WADMKD: "Desa Ketapanglor", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 345.60, GUNA_TNH: "Tambak Udang Intensif", RTRW: "Perikanan Payau", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia", V_Arahan: "Prioritas I Standardisasi IPAL Tambak", V_Khusus: "Bukan Kawasan Lindung", REKOMTNH: "Pemberian Hak Usaha Budidaya", PASET: "Sertifikasi Hak Milik Petani Tambak" },
+        geometry: { type: "Polygon", coordinates: [[[112.550, -6.965], [112.575, -6.962], [112.572, -6.985], [112.545, -6.988], [112.550, -6.965]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 10, NAMOBJ: "Tanjangawan", WADMKD: "Desa Tanjangawan", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 275.30, GUNA_TNH: "Padi Sawah Irigasi Teknis", RTRW: "LP2B Prioritas", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tidak Tersedia", V_Arahan: "Perlindungan Pangan Abadi", V_Khusus: "Kawasan LP2B Terlindungi", REKOMTNH: "Pencegahan Fragmentasi Lahan Sawah", PASET: "Konsolidasi Tanah Pertanian" },
+        geometry: { type: "Polygon", coordinates: [[[112.495, -6.955], [112.515, -6.950], [112.510, -6.975], [112.490, -6.972], [112.495, -6.955]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 11, NAMOBJ: "Kebonagung", WADMKD: "Desa Kebonagung", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 380.40, GUNA_TNH: "Industri Pengolahan Ikan & Cold Storage", RTRW: "Ruang Terbuka Hijau & Sempadan", KSPOLA: "Tidak Sesuai", COMPATB: "Tidak Kompatibel", OPTNH: "Kurang Optimal", Vname: "Tidak Tersedia", V_Arahan: "Pengendalian & Relokasi Bertahap", V_Khusus: "Pelanggaran Tata Ruang Sempadan", REKOMTNH: "Penertiban Penguasaan Tanah Tanpa Izin", PASET: "Penertiban Aset Tanah Negara" },
+        geometry: { type: "Polygon", coordinates: [[[112.570, -6.935], [112.595, -6.930], [112.590, -6.958], [112.568, -6.955], [112.570, -6.935]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 12, NAMOBJ: "Karangrejo", WADMKD: "Desa Karangrejo", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 315.80, GUNA_TNH: "Tegal/Ladang Jagung & Palawija", RTRW: "Hortikultura Rakyat", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tersedia", V_Arahan: "Prioritas III Bantuan Sumur Bor", V_Khusus: "Bukan Kawasan Lindung", REKOMTNH: "Dukungan Hak Milik Individu", PASET: "Pemberdayaan Reforma Agraria" },
+        geometry: { type: "Polygon", coordinates: [[[112.505, -6.970], [112.530, -6.968], [112.525, -6.992], [112.500, -6.990], [112.505, -6.970]]] }
+      },
+      {
+        type: "Feature",
+        properties: { OBJECTID: 13, NAMOBJ: "Glagahsari", WADMKD: "Desa Glagahsari", WADMKC: "Kecamatan Ujungpangkah", WADMKK: "Kabupaten Gresik", LUAS_HA: 262.15, GUNA_TNH: "Hutan Bakau Lindung & Habitat Burung Migran", RTRW: "Kawasan Lindung Mutlak", KSPOLA: "Sesuai", COMPATB: "Kompatibel", OPTNH: "Optimal", Vname: "Tidak Tersedia", V_Arahan: "Perlindungan Mutlak Ekosistem", V_Khusus: "Kawasan Cagar Alam Ramsar", REKOMTNH: "Penetapan Batas Hak Pengelolaan", PASET: "Bukan Potensi Aset" },
+        geometry: { type: "Polygon", coordinates: [[[112.585, -6.908], [112.610, -6.902], [112.608, -6.928], [112.588, -6.930], [112.585, -6.908]]] }
+      }
+    ];
+
+    const NPGT_METADATA = {
+      KSPOLA: {
+        title: "KSPOLA &mdash; Kesesuaian Pola Ruang (RTRW)",
+        desc: "Evaluasi kesesuaian penggunaan tanah aktual terhadap Rencana Tata Ruang Wilayah (RTRW).",
+        colors: { "Sesuai": "#10B981", "Tidak Sesuai": "#EF4444", "Belum Sesuai": "#F59E0B" }
+      },
+      COMPATB: {
+        title: "COMPATB &mdash; Kompatibilitas Fisik Tanah",
+        desc: "Kesesuaian karakteristik fisik tanah terhadap kemampuan dan daya dukung lingkungan.",
+        colors: { "Kompatibel": "#0EA5E9", "Kurang Kompatibel": "#F97316", "Tidak Kompatibel": "#DC2626" }
+      },
+      OPTNH: {
+        title: "OPTNH &mdash; Keoptimalan Penggunaan Tanah",
+        desc: "Tingkat efisiensi dan produktivitas intensitas pemanfaatan ruang tanah.",
+        colors: { "Optimal": "#059669", "Kurang Optimal": "#EAB308", "Belum Optimal": "#EC4899" }
+      },
+      Vname: {
+        title: "Vname &mdash; Ketersediaan Tanah",
+        desc: "Status ketersediaan fisik dan yuridis tanah untuk alokasi pembangunan berkelanjutan.",
+        colors: { "Tersedia": "#3B82F6", "Tersedia Bersyarat": "#F59E0B", "Tidak Tersedia": "#64748B" }
+      },
+      V_Arahan: {
+        title: "V_Arahan &mdash; Arahan Ketersediaan",
+        desc: "Rekomendasi prioritas dan pembatasan intervensi penatagunaan tanah.",
+        colors: { "Perlindungan Mutlak": "#DC2626", "Perlindungan LP2B": "#16A34A", "Prioritas I Revitalisasi Tambak": "#0284C7", "Prioritas I Penertiban Tanah Terlantar": "#D97706", "Prioritas I Standardisasi IPAL Tambak": "#0D9488", "Prioritas II Reklamasi Pascatambang": "#CA8A04", "Prioritas III Bantuan Sumur Bor": "#65A30D" }
+      },
+      V_Khusus: {
+        title: "V_Khusus &mdash; Arahan Khusus / Lindung",
+        desc: "Klasifikasi zona sensitif ekologis, kawasan LP2B, sempadan pantai, dan tanah terlantar.",
+        colors: { "Kawasan Lindung Pesisir": "#0284C7", "Kawasan Konservasi Mangrove": "#059669", "Kawasan LP2B Terlindungi": "#16A34A", "Kawasan Cagar Alam Ramsar": "#047857", "Kawasan Rawan Longsor Kapur": "#EA580C", "Sempadan Pantai 100m": "#2563EB", "Pelanggaran Tata Ruang Sempadan": "#DC2626", "Bukan Kawasan Lindung": "#64748B" }
+      },
+      REKOMTNH: {
+        title: "REKOMTNH &mdash; Rekomendasi Tanah",
+        desc: "Tindakan penataan ruang tanah yang direkomendasikan Kanwil BPN Jawa Timur.",
+        colors: { "Pertahankan Tambak Silvofishery": "#059669", "Pertahankan Kawasan Konservasi": "#047857", "Intensifikasi Produksi Garam": "#0284C7", "Penataan Ruang Permukiman Pesisir": "#3B82F6", "Larangan Alih Fungsi Lahan": "#15803D", "Penertiban Penguasaan Tanah Tanpa Izin": "#DC2626" }
+      },
+      PASET: {
+        title: "PASET &mdash; Potensi Penataan Aset (TORA)",
+        desc: "Peluang legalisasi aset, redistribusi tanah obyek reforma agraria, dan penataan akses.",
+        colors: { "Prioritas Redistribusi Tanah (TORA)": "#DC2626", "Potensi Redistribusi TCUN": "#EA580C", "Legalisasi Sertifikasi Hak Garam": "#0284C7", "Program PTSL Tanah Masyarakat": "#3B82F6", "Penataan Akses Sarana Pertanian": "#16A34A", "Penertiban Aset Tanah Negara": "#B91C1C", "Bukan Potensi Aset": "#64748B" }
+      }
+    };
+
+    // State Variables
+    let currentIndicator = "KSPOLA";
+    let selectedDesa = "";
+    let selectedFeature = null;
+    let fillOpacity = 0.75;
+    let strokeWidth = 1.5;
+    let activeBasemap = "dark";
+    let isMeasuring = false;
+    let measureType = "distance"; // 'distance' | 'area'
+    let measurePoints = [];
+    let tableSortCol = "OBJECTID";
+    let tableSortAsc = true;
+    let tableSearchQuery = "";
+
+    // Leaflet Instances
+    let map, tileLayer, geojsonLayer, measureLayer;
+
+    // Basemaps dictionary
+    const BASEMAPS = {
+      dark: { url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", attr: "&copy; CartoDB" },
+      satellite: { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr: "&copy; Esri" },
+      osm: { url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attr: "&copy; OpenStreetMap" },
+      positron: { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", attr: "&copy; CartoDB" }
+    };
+
+    function initMap() {
+      map = L.map("map", {
+        center: [-6.945, 112.55],
+        zoom: 12,
+        zoomControl: false,
+        attributionControl: false
+      });
+
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+
+      tileLayer = L.tileLayer(BASEMAPS[activeBasemap].url, { maxZoom: 19 }).addTo(map);
+      measureLayer = L.layerGroup().addTo(map);
+
+      map.on("mousemove", (e) => {
+        document.getElementById("hudCoords").innerText = `Lat: ${e.latlng.lat.toFixed(5)} | Lon: ${e.latlng.lng.toFixed(5)}`;
+      });
+
+      map.on("click", (e) => {
+        if (isMeasuring) {
+          addMeasurePoint(e.latlng.lat, e.latlng.lng);
+        }
+      });
+
+      renderIndicatorGrid();
+      populateDesaSelect();
+      renderGeoJson();
+      renderAnalytics();
+      renderAttributeTable();
+      renderActiveLegend();
+    }
+
+    function renderIndicatorGrid() {
+      const grid = document.getElementById("indicatorGrid");
+      grid.innerHTML = "";
+      Object.keys(NPGT_METADATA).forEach(key => {
+        const btn = document.createElement("button");
+        const isActive = key === currentIndicator;
+        btn.className = `py-1.5 px-2 rounded-lg text-xs font-semibold font-mono tracking-tight transition-all cursor-pointer text-center ${
+          isActive 
+            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400' 
+            : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700/60'
+        }`;
+        btn.innerText = key;
+        btn.onclick = () => setIndicator(key);
+        grid.appendChild(btn);
+      });
+    }
+
+    function setIndicator(key) {
+      currentIndicator = key;
+      renderIndicatorGrid();
+      const meta = NPGT_METADATA[key];
+      document.getElementById("indTitle").innerHTML = meta.title;
+      document.getElementById("indDesc").innerText = meta.desc;
+      renderGeoJson();
+      renderAnalytics();
+      renderActiveLegend();
+    }
+
+    function populateDesaSelect() {
+      const select = document.getElementById("desaSelect");
+      const names = SAMPLE_FEATURES.map(f => f.properties.WADMKD).sort();
+      names.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.innerText = name;
+        select.appendChild(opt);
+      });
+    }
+
+    function onDesaChange(val) {
+      selectedDesa = val;
+      renderGeoJson();
+      renderAnalytics();
+      renderAttributeTable();
+    }
+
+    function resetDesaFilter() {
+      selectedDesa = "";
+      document.getElementById("desaSelect").value = "";
+      onDesaChange("");
+    }
+
+    function getFeaturesToDisplay() {
+      if (!selectedDesa) return SAMPLE_FEATURES;
+      return SAMPLE_FEATURES.filter(f => f.properties.WADMKD === selectedDesa);
+    }
+
+    function getColorForFeature(f) {
+      const val = f.properties[currentIndicator];
+      const colors = NPGT_METADATA[currentIndicator]?.colors || {};
+      if (colors[val]) return colors[val];
+      return "#38BDF8";
+    }
+
+    function renderGeoJson() {
+      if (geojsonLayer) {
+        map.removeLayer(geojsonLayer);
+      }
+
+      const features = getFeaturesToDisplay();
+      geojsonLayer = L.geoJSON({ type: "FeatureCollection", features: features }, {
+        style: (feature) => {
+          const isSelected = selectedFeature && selectedFeature.properties.OBJECTID === feature.properties.OBJECTID;
+          return {
+            fillColor: getColorForFeature(feature),
+            fillOpacity: isSelected ? 0.95 : fillOpacity,
+            color: isSelected ? "#38BDF8" : "#FFFFFF",
+            weight: isSelected ? 3 : strokeWidth,
+            opacity: 0.9,
+            dashArray: isSelected ? "4" : null
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties;
+          layer.bindTooltip(`
+            <div class="px-2 py-1 text-xs text-slate-100 bg-slate-900/95 border border-white/20 rounded shadow-xl font-sans">
+              <div class="font-bold text-sky-400 text-sm mb-0.5">${p.NAMOBJ}</div>
+              <div class="text-[11px] text-slate-300 font-mono">Luas: <span class="text-white font-semibold">${p.LUAS_HA} Ha</span></div>
+              <div class="text-[11px] text-slate-300 font-mono">${currentIndicator}: <span class="text-emerald-400 font-bold">${p[currentIndicator] || '-'}</span></div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Guna Lahan: ${p.GUNA_TNH || '-'}</div>
+            </div>
+          `, { sticky: true, direction: "top" });
+
+          layer.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+            openInspector(feature);
+          });
+        }
+      }).addTo(map);
+    }
+
+    function renderAnalytics() {
+      const features = getFeaturesToDisplay();
+      document.getElementById("featureCountBadge").innerText = `${features.length} Bidang`;
+      document.getElementById("kpiPolygonCount").innerText = `${features.length} Desa`;
+
+      let totalHa = 0;
+      const counts = {};
+      const areas = {};
+
+      features.forEach(f => {
+        const val = f.properties[currentIndicator] || "Tidak Terdata";
+        const ha = Number(f.properties.LUAS_HA) || 0;
+        totalHa += ha;
+        counts[val] = (counts[val] || 0) + 1;
+        areas[val] = (areas[val] || 0) + ha;
+      });
+
+      document.getElementById("kpiTotalHa").innerHTML = `${totalHa.toFixed(1)} <span class="text-xs font-normal text-slate-400">Ha</span>`;
+
+      const breakdown = Object.keys(counts).map(k => ({
+        name: k,
+        count: counts[k],
+        ha: areas[k],
+        pct: totalHa > 0 ? (areas[k] / totalHa) * 100 : 0
+      })).sort((a, b) => b.ha - a.ha);
+
+      // Render Bar
+      const bar = document.getElementById("multiSegmentBar");
+      bar.innerHTML = "";
+      const colors = NPGT_METADATA[currentIndicator]?.colors || {};
+
+      breakdown.forEach(item => {
+        const color = colors[item.name] || "#38BDF8";
+        const segment = document.createElement("div");
+        segment.style.width = `${item.pct}%`;
+        segment.style.backgroundColor = color;
+        segment.className = "h-full rounded-sm transition-all";
+        segment.title = `${item.name}: ${item.pct.toFixed(1)}% (${item.ha.toFixed(1)} Ha)`;
+        bar.appendChild(segment);
+      });
+
+      // Render Breakdown List
+      const list = document.getElementById("breakdownList");
+      list.innerHTML = "";
+      breakdown.forEach(item => {
+        const color = colors[item.name] || "#64748B";
+        const card = document.createElement("div");
+        card.className = "p-3 rounded-xl bg-slate-900/60 border border-white/5 hover:border-white/20 transition-all";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full shrink-0 shadow-sm" style="background-color: ${color}"></span>
+              <span class="text-xs font-semibold text-slate-200">${item.name}</span>
+            </div>
+            <span class="text-xs font-bold font-mono text-sky-400">${item.pct.toFixed(1)}%</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+            <span>${item.count} Poligon Wilayah</span>
+            <span>${item.ha.toFixed(2)} Ha</span>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function renderActiveLegend() {
+      const container = document.getElementById("activeLegendList");
+      container.innerHTML = "";
+      const colors = NPGT_METADATA[currentIndicator]?.colors || {};
+      Object.entries(colors).forEach(([name, hex]) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between p-2 rounded-lg bg-slate-800/60 border border-white/5";
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full" style="background-color: ${hex}"></span>
+            <span class="text-slate-200 font-medium">${name}</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">${hex}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function openInspector(feature) {
+      selectedFeature = feature;
+      const p = feature.properties;
+      document.getElementById("inspTitle").innerText = p.NAMOBJ || p.WADMKD;
+      document.getElementById("inspSub").innerText = `${p.WADMKC}, ${p.WADMKK}`;
+      document.getElementById("inspHa").innerText = `${p.LUAS_HA} Ha`;
+      document.getElementById("inspGuna").innerText = p.GUNA_TNH || "-";
+      document.getElementById("inspRtrw").innerText = p.RTRW || "-";
+
+      const indContainer = document.getElementById("inspIndicators");
+      indContainer.innerHTML = "";
+      Object.keys(NPGT_METADATA).forEach(k => {
+        const val = p[k] || "Tidak Terdata";
+        const color = NPGT_METADATA[k]?.colors?.[val] || "#64748B";
+        const div = document.createElement("div");
+        div.className = "p-2 rounded bg-slate-900/60 border border-white/5 flex items-center justify-between";
+        div.innerHTML = `
+          <div>
+            <span class="text-[10px] text-slate-400 block">${k}</span>
+            <span class="text-white font-semibold">${val}</span>
+          </div>
+          <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
+        `;
+        indContainer.appendChild(div);
+      });
+
+      document.getElementById("inspectorCard").classList.remove("hidden");
+      renderGeoJson();
+    }
+
+    function closeInspector() {
+      selectedFeature = null;
+      document.getElementById("inspectorCard").classList.add("hidden");
+      renderGeoJson();
+    }
+
+    function toggleTable() {
+      const tbl = document.getElementById("attributeTable");
+      tbl.classList.toggle("hidden");
+    }
+
+    function renderAttributeTable() {
+      const tbody = document.getElementById("attrTableBody");
+      tbody.innerHTML = "";
+      let list = [...getFeaturesToDisplay()];
+
+      if (tableSearchQuery.trim()) {
+        const q = tableSearchQuery.toLowerCase();
+        list = list.filter(f => Object.values(f.properties).some(v => String(v).toLowerCase().includes(q)));
+      }
+
+      list.sort((a, b) => {
+        const valA = a.properties[tableSortCol] ?? "";
+        const valB = b.properties[tableSortCol] ?? "";
+        if (typeof valA === "number" && typeof valB === "number") {
+          return tableSortAsc ? valA - valB : valB - valA;
+        }
+        return tableSortAsc ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
+      });
+
+      document.getElementById("tableCountBadge").innerText = `${list.length} Baris`;
+
+      list.forEach((f, idx) => {
+        const p = f.properties;
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-800/60 cursor-pointer transition-colors";
+        tr.onclick = () => {
+          openInspector(f);
+          const coords = f.geometry.coordinates[0];
+          const bounds = coords.map(c => [c[1], c[0]]);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        };
+        tr.innerHTML = `
+          <td class="p-2 text-center text-slate-500">${idx + 1}</td>
+          <td class="p-2 font-bold text-sky-400">${p.NAMOBJ}</td>
+          <td class="p-2">${p.LUAS_HA} Ha</td>
+          <td class="p-2 font-semibold text-emerald-400">${p.KSPOLA || '-'}</td>
+          <td class="p-2 text-sky-300">${p.COMPATB || '-'}</td>
+          <td class="p-2 text-amber-300">${p.OPTNH || '-'}</td>
+          <td class="p-2 text-purple-300">${p.Vname || '-'}</td>
+          <td class="p-2 text-slate-400 truncate max-w-xs">${p.GUNA_TNH || '-'}</td>
+          <td class="p-2 text-slate-400 truncate max-w-xs">${p.REKOMTNH || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function sortTable(col) {
+      if (tableSortCol === col) {
+        tableSortAsc = !tableSortAsc;
+      } else {
+        tableSortCol = col;
+        tableSortAsc = true;
+      }
+      renderAttributeTable();
+    }
+
+    function onSearchTable(val) {
+      tableSearchQuery = val;
+      renderAttributeTable();
+    }
+
+    function exportCsv() {
+      const features = getFeaturesToDisplay();
+      if (!features.length) return;
+      const headers = ["NAMOBJ", "WADMKD", "LUAS_HA", "KSPOLA", "COMPATB", "OPTNH", "Vname", "V_Arahan", "V_Khusus", "REKOMTNH", "PASET", "GUNA_TNH", "RTRW"];
+      let csv = headers.join(",") + "\n";
+      features.forEach(f => {
+        const p = f.properties;
+        const row = headers.map(h => `"${String(p[h] || '').replace(/"/g, '""')}"`);
+        csv += row.join(",") + "\n";
+      });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `NPGT_Ujungpangkah_${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function toggleBasemapMenu() {
+      document.getElementById("basemapMenu").classList.toggle("hidden");
+    }
+
+    function setBasemap(id) {
+      activeBasemap = id;
+      if (tileLayer) map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(BASEMAPS[id].url, { maxZoom: 19 }).addTo(map);
+      document.getElementById("basemapMenu").classList.add("hidden");
+    }
+
+    function setTab(tab) {
+      const aBtn = document.getElementById("tabAnalyticsBtn");
+      const lBtn = document.getElementById("tabLayersBtn");
+      const aContent = document.getElementById("analyticsTabContent");
+      const lContent = document.getElementById("layersTabContent");
+
+      if (tab === "analytics") {
+        aBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer";
+        lBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all cursor-pointer";
+        aContent.classList.remove("hidden");
+        lContent.classList.add("hidden");
+      } else {
+        lBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-md shadow-blue-600/30 transition-all cursor-pointer";
+        aBtn.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all cursor-pointer";
+        lContent.classList.remove("hidden");
+        aContent.classList.add("hidden");
+      }
+    }
+
+    function updateOpacity(val) {
+      fillOpacity = parseFloat(val);
+      document.getElementById("opacityLabel").innerText = `${Math.round(fillOpacity * 100)}%`;
+      renderGeoJson();
+    }
+
+    function updateStroke(val) {
+      strokeWidth = parseFloat(val);
+      document.getElementById("strokeLabel").innerText = `${strokeWidth} px`;
+      renderGeoJson();
+    }
+
+    function resetMapView() {
+      map.setView([-6.945, 112.55], 12);
+    }
+
+    function toggleMeasure() {
+      isMeasuring = !isMeasuring;
+      const panel = document.getElementById("measurePanel");
+      if (isMeasuring) {
+        panel.classList.remove("hidden");
+      } else {
+        panel.classList.add("hidden");
+        clearMeasure();
+      }
+    }
+
+    function setMeasureType(type) {
+      measureType = type;
+      if (type === "distance") {
+        document.getElementById("mDistBtn").className = "py-1.5 px-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-medium cursor-pointer";
+        document.getElementById("mAreaBtn").className = "py-1.5 px-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 text-xs font-medium cursor-pointer";
+      } else {
+        document.getElementById("mAreaBtn").className = "py-1.5 px-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-medium cursor-pointer";
+        document.getElementById("mDistBtn").className = "py-1.5 px-2 rounded-lg bg-slate-800 border border-white/5 text-slate-400 text-xs font-medium cursor-pointer";
+      }
+      clearMeasure();
+    }
+
+    function addMeasurePoint(lat, lng) {
+      measurePoints.push([lat, lng]);
+      measureLayer.clearLayers();
+
+      measurePoints.forEach(pt => {
+        L.circleMarker(pt, { radius: 5, color: "#F59E0B", fillColor: "#FFFFFF", fillOpacity: 1, weight: 2 }).addTo(measureLayer);
+      });
+
+      document.getElementById("measurePtsCount").innerText = `${measurePoints.length} Titik Diklik`;
+
+      if (measureType === "distance" && measurePoints.length >= 2) {
+        L.polyline(measurePoints, { color: "#F59E0B", weight: 3, dashArray: "6,6" }).addTo(measureLayer);
+        let dist = 0;
+        for (let i = 0; i < measurePoints.length - 1; i++) {
+          dist += map.distance(measurePoints[i], measurePoints[i + 1]);
+        }
+        document.getElementById("measureResult").innerText = dist >= 1000 ? `${(dist / 1000).toFixed(2)} km` : `${dist.toFixed(1)} m`;
+      } else if (measureType === "area" && measurePoints.length >= 3) {
+        L.polygon(measurePoints, { color: "#F59E0B", fillColor: "#F59E0B", fillOpacity: 0.25, weight: 2, dashArray: "4,4" }).addTo(measureLayer);
+        // Shoelace spherical area formula
+        const R = 6378137;
+        const rad = Math.PI / 180;
+        let total = 0;
+        for (let i = 0; i < measurePoints.length; i++) {
+          const p1 = measurePoints[i];
+          const p2 = measurePoints[(i + 1) % measurePoints.length];
+          total += (p2[1] * rad - p1[1] * rad) * (2 + Math.sin(p1[0] * rad) + Math.sin(p2[0] * rad));
+        }
+        const areaSqM = Math.abs((total * R * R) / 2.0);
+        const ha = areaSqM / 10000;
+        document.getElementById("measureResult").innerText = `${ha.toFixed(2)} Ha (${(areaSqM / 1000000).toFixed(3)} km²)`;
+      }
+    }
+
+    function clearMeasure() {
+      measurePoints = [];
+      measureLayer.clearLayers();
+      document.getElementById("measureResult").innerText = "0.00 m";
+      document.getElementById("measurePtsCount").innerText = "0 Titik Diklik";
+    }
+
+    window.onload = initMap;
+  </script>
+</body>
 </html>
