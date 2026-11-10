@@ -13,6 +13,8 @@ import {
   Building,
   Layers,
   PieChart,
+  Download,
+  FileSpreadsheet,
   X
 } from 'lucide-react';
 
@@ -23,6 +25,7 @@ import {
   getTone,
   getLandUseColor,
   getLandCapabilityColor,
+  getSpatialPlanColor,
   CAPABILITY_MODES,
   sortByTone,
   formatNumber,
@@ -31,8 +34,13 @@ import {
   hasQreklasColumn,
   hasLandCapabilityColumns,
   findCapabilityColumn,
-  getIndicatorDetails
+  getIndicatorDetails,
+  generateNpgtInsightsCsv,
+  generateSingleIndicatorInsightCsv,
+  downloadCsvFile,
+  downloadBlobFile
 } from '../utils/npgtData';
+import { generateNpgtInsightsXlsxBlob } from '../utils/npgtInsightXlsx';
 
 export default function NpgtDashboard({
   layer,
@@ -232,6 +240,13 @@ export default function NpgtDashboard({
               ...item,
               color: getLandCapabilityColor(item.label, capabilityMode, idx)
             }));
+        } else if (ind.isSpatialPlan || ind.key === 'NAMOBJ') {
+          sortedList = [...rawList]
+            .sort((a, b) => b.value - a.value)
+            .map((item, idx) => ({
+              ...item,
+              color: getSpatialPlanColor(item.label, idx)
+            }));
         } else {
           sortedList = sortByTone(rawList).map((item) => {
             const t = getTone(item.label);
@@ -339,6 +354,59 @@ export default function NpgtDashboard({
     }
   ];
 
+  // Unduh seluruh insight dalam satu file Multi-Sheet (.xlsx) di mana tiap analisis memiliki sheet masing-masing
+  const handleExportAllInsightsXlsx = async () => {
+    if (!rows.length) return;
+    const blob = await generateNpgtInsightsXlsxBlob({
+      rows,
+      wilayahInfo,
+      selectedDesa,
+      hasQreklas,
+      includeDesaBreakdown: true
+    });
+    if (!blob) return;
+    const kecClean = (wilayahInfo.kec || 'Kecamatan').replace(/\s+/g, '_');
+    const desaClean = selectedDesa ? `_${selectedDesa.replace(/\s+/g, '_')}` : '_Seluruh_Desa';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `NPGT_Insight_Per_Sheet_${kecClean}${desaClean}_${dateStr}.xlsx`;
+    downloadBlobFile(blob, filename);
+  };
+
+  // Unduh seluruh insight (persentase dan proporsi luas + dominasi tiap analisis) ke CSV
+  const handleExportAllInsightsCsv = () => {
+    if (!rows.length) return;
+    const csvContent = generateNpgtInsightsCsv({
+      rows,
+      wilayahInfo,
+      selectedDesa,
+      hasQreklas,
+      includeDesaBreakdown: true
+    });
+    const kecClean = (wilayahInfo.kec || 'Kecamatan').replace(/\s+/g, '_');
+    const desaClean = selectedDesa ? `_${selectedDesa.replace(/\s+/g, '_')}` : '_Seluruh_Desa';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `NPGT_Seluruh_Insight_${kecClean}${desaClean}_${dateStr}.csv`;
+    downloadCsvFile(csvContent, filename);
+  };
+
+  // Unduh insight indikator aktif saat ini ke CSV
+  const handleExportCurrentIndicatorCsv = () => {
+    if (!rows.length) return;
+    const csvContent = generateSingleIndicatorInsightCsv({
+      rows,
+      wilayahInfo,
+      selectedDesa,
+      indicatorKey: activeIndicator,
+      effectiveLandUseMode,
+      effectiveCapColumn
+    });
+    const kecClean = (wilayahInfo.kec || 'Kecamatan').replace(/\s+/g, '_');
+    const desaClean = selectedDesa ? `_${selectedDesa.replace(/\s+/g, '_')}` : '';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `NPGT_Insight_${activeIndicator}_${kecClean}${desaClean}_${dateStr}.csv`;
+    downloadCsvFile(csvContent, filename);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto bg-[#070B10] p-6 text-slate-200 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -376,23 +444,43 @@ export default function NpgtDashboard({
             </div>
           </div>
 
-          {/* Spatial View & Demo Switcher */}
+          {/* Action Toolbar: Multi-Sheet Excel Export, CSV Export, Spatial View & Demo Switcher */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleExportAllInsightsXlsx}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-colors border border-emerald-500/40 cursor-pointer"
+              title="Unduh seluruh insight dengan Sheet terpisah untuk masing-masing analisis (Proporsi % Unique Value & Dominasi Terbesar)"
+            >
+              <FileSpreadsheet className="size-3.5 stroke-[2.5]" />
+              <span>Unduh Insight Per Sheet (.xlsx)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportAllInsightsCsv}
+              className="flex items-center gap-1.5 rounded-lg bg-[#0B111A] hover:bg-emerald-500/15 px-3.5 py-2 text-xs font-bold text-emerald-300 hover:text-emerald-200 shadow-sm transition-colors border border-emerald-500/40 cursor-pointer"
+              title="Unduh seluruh data insight (proporsi luas % tiap unique value & dominasi terbesar) dalam satu file CSV"
+            >
+              <Download className="size-3.5 stroke-[2.5]" />
+              <span>Unduh Seluruh Insight (.csv)</span>
+            </button>
+
             {onViewIndicatorInMap ? (
               <button
                 type="button"
                 onClick={() => onViewIndicatorInMap(activeIndicator)}
-                className="flex items-center gap-1.5 rounded-lg bg-teal-400 hover:bg-teal-300 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-sm transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-teal-400 hover:bg-teal-300 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-sm transition-colors cursor-pointer"
               >
                 <Layers className="size-3.5 stroke-[2.5]" />
-                <span>Lihat Indikator di Peta Spasial</span>
+                <span>Lihat di Peta Spasial</span>
               </button>
             ) : (
               onView8LayersInMap && (
                 <button
                   type="button"
                   onClick={onView8LayersInMap}
-                  className="flex items-center gap-1.5 rounded-lg bg-teal-400 hover:bg-teal-300 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg bg-teal-400 hover:bg-teal-300 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-sm transition-colors cursor-pointer"
                 >
                   <Layers className="size-3.5 stroke-[2.5]" />
                   <span>Buka Layer di Peta Spasial</span>
@@ -733,6 +821,16 @@ export default function NpgtDashboard({
                     >
                       <Info className="size-3.5 text-cyan-400" />
                       <span>Info Analisis</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportCurrentIndicatorCsv}
+                      title={`Unduh insight ${currentAttr.title} ke file CSV`}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#070B10] text-slate-300 border border-slate-700/80 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                    >
+                      <Download className="size-3.5 text-emerald-400" />
+                      <span>Unduh CSV</span>
                     </button>
 
                     <span className="text-[11px] font-mono text-slate-400">

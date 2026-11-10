@@ -24,10 +24,10 @@ export function calculateBBox(geoData) {
 
   function processCoords(coords) {
     if (!Array.isArray(coords)) return;
-    if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
-      const lng = coords[0];
-      const lat = coords[1];
-      if (isFinite(lng) && isFinite(lat)) {
+    if (coords.length >= 2 && coords[0] !== null && coords[1] !== null && typeof coords[0] !== 'object') {
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (Number.isFinite(lng) && Number.isFinite(lat)) {
         if (lng < minLng) minLng = lng;
         if (lat < minLat) minLat = lat;
         if (lng > maxLng) maxLng = lng;
@@ -55,7 +55,7 @@ export function calculateBBox(geoData) {
     }
   }
 
-  if (!isFinite(minLng) || !isFinite(minLat)) {
+  if (!isFinite(minLng) || !isFinite(minLat) || !isFinite(maxLng) || !isFinite(maxLat)) {
     return {
       leafletBounds: [[-8.8, 111.0], [-6.5, 115.5]],
       bbox: [111.0, -8.8, 115.5, -6.5],
@@ -63,10 +63,17 @@ export function calculateBBox(geoData) {
     };
   }
 
+  // Guard against non-WGS84 projected coordinates (e.g. UTM with lat > 90 or lng > 180)
+  const isGeographic =
+    Math.abs(minLat) <= 90 &&
+    Math.abs(maxLat) <= 90 &&
+    Math.abs(minLng) <= 180 &&
+    Math.abs(maxLng) <= 180;
+
   const result = {
     leafletBounds: [[minLat, minLng], [maxLat, maxLng]],
     bbox: [minLng, minLat, maxLng, maxLat],
-    isValid: true
+    isValid: isGeographic
   };
 
   if (geoData && typeof geoData === 'object') {

@@ -28,6 +28,7 @@ import {
   getUtmZoneString
 } from '../utils/spatialCalculations';
 import { projectToNative } from '../utils/geoParser';
+import { getFeatureAreaHa, formatNumber } from '../utils/npgtData';
 
 // Available Basemaps
 export const BASEMAPS = [
@@ -586,7 +587,7 @@ export default function MapViewer({
               props.id ||
               hit.feature.id ||
               'Fitur Spasial';
-            const areaVal = props.LUAS_HA !== undefined ? Number(props.LUAS_HA) : NaN;
+            const areaVal = getFeatureAreaHa(hit.feature) || (props.LUAS_HA !== undefined ? Number(props.LUAS_HA) : NaN);
             const areaBadge =
               Number.isFinite(areaVal) && areaVal > 0
                 ? ` <span class="font-mono text-teal-300">(${areaVal.toLocaleString('id-ID', { maximumFractionDigits: 2 })} Ha)</span>`
@@ -855,14 +856,18 @@ export default function MapViewer({
     });
 
     if (matchedFeatures.length > 0) {
-      const bbox = calculateBBox({ type: 'FeatureCollection', features: matchedFeatures });
-      if (bbox && mapInstanceRef.current) {
-        mapInstanceRef.current.fitBounds(bbox, {
-          padding: [70, 70],
-          maxZoom: 16,
-          animate: true,
-          duration: 0.75
-        });
+      try {
+        const { leafletBounds, isValid } = calculateBBox({ type: 'FeatureCollection', features: matchedFeatures });
+        if (isValid && leafletBounds && mapInstanceRef.current) {
+          mapInstanceRef.current.fitBounds(leafletBounds, {
+            padding: [70, 70],
+            maxZoom: 16,
+            animate: true,
+            duration: 0.75
+          });
+        }
+      } catch (err) {
+        console.warn('Auto-zoom legend error:', err);
       }
     }
   }, [legendSelectedCategory, layers]);
@@ -871,33 +876,46 @@ export default function MapViewer({
   useEffect(() => {
     if (!mapInstanceRef.current || !highlightGroupRef.current) return;
     const highlightGroup = highlightGroupRef.current;
-    highlightGroup.clearLayers();
+    
+    try {
+      highlightGroup.clearLayers();
+    } catch (e) {
+      console.warn('Error clearing highlight layers:', e);
+    }
 
-    if (!selectedFeature) return;
+    if (!selectedFeature || !selectedFeature.geometry) return;
 
-    const highlightLayer = L.geoJSON(selectedFeature, {
-      renderer: overlayRendererRef.current,
-      interactive: false,
-      style: {
-        color: '#fbbf24', // Amber glow
-        weight: 3.5,
-        fillColor: '#f59e0b',
-        fillOpacity: 0.45,
-        dashArray: '4, 4'
-      },
-      pointToLayer: (feature, latlng) => {
-        return L.circleMarker(latlng, {
-          renderer: overlayRendererRef.current,
-          radius: 9,
-          fillColor: '#fbbf24',
-          color: '#ffffff',
-          weight: 2.5,
-          fillOpacity: 0.9
-        });
-      }
-    });
+    try {
+      const highlightLayer = L.geoJSON(selectedFeature, {
+        renderer: overlayRendererRef.current,
+        interactive: false,
+        style: {
+          color: '#fbbf24', // Amber glow
+          weight: 1.75, // Dikurangi 50% dari 3.5
+          stroke: true,
+          opacity: 0.4, // Opasitas outline highlight dikurangi menjadi 40% (0.4)
+          fill: true,
+          fillColor: '#f59e0b',
+          fillOpacity: 0.45,
+          dashArray: '4, 4'
+        },
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            renderer: overlayRendererRef.current,
+            radius: 9,
+            fillColor: '#fbbf24',
+            color: '#ffffff',
+            weight: 1.25, // Dikurangi 50% dari 2.5
+            opacity: 0.4,
+            fillOpacity: 0.9
+          });
+        }
+      });
 
-    highlightGroup.addLayer(highlightLayer);
+      highlightGroup.addLayer(highlightLayer);
+    } catch (err) {
+      console.warn('Failed to add highlight layer:', err);
+    }
   }, [selectedFeature]);
 
   // 5. Fit bounds to all layers on trigger OR when new layers are added
@@ -937,23 +955,27 @@ export default function MapViewer({
     });
 
     if (isFinite(combinedBBox.minLng)) {
-      // Handle single-point or zero-dimension bounding box
-      const dLng = combinedBBox.maxLng - combinedBBox.minLng;
-      const dLat = combinedBBox.maxLat - combinedBBox.minLat;
-      if (dLng < 0.0001 && dLat < 0.0001) {
-        // Single point — zoom to fixed level
-        mapInstanceRef.current.setView(
-          [(combinedBBox.minLat + combinedBBox.maxLat) / 2, (combinedBBox.minLng + combinedBBox.maxLng) / 2],
-          15
-        );
-      } else {
-        mapInstanceRef.current.fitBounds(
-          [
-            [combinedBBox.minLat, combinedBBox.minLng],
-            [combinedBBox.maxLat, combinedBBox.maxLng]
-          ],
-          { padding: [40, 40], maxZoom: 16 }
-        );
+      try {
+        // Handle single-point or zero-dimension bounding box
+        const dLng = combinedBBox.maxLng - combinedBBox.minLng;
+        const dLat = combinedBBox.maxLat - combinedBBox.minLat;
+        if (dLng < 0.0001 && dLat < 0.0001) {
+          // Single point — zoom to fixed level
+          mapInstanceRef.current.setView(
+            [(combinedBBox.minLat + combinedBBox.maxLat) / 2, (combinedBBox.minLng + combinedBBox.maxLng) / 2],
+            15
+          );
+        } else {
+          mapInstanceRef.current.fitBounds(
+            [
+              [combinedBBox.minLat, combinedBBox.minLng],
+              [combinedBBox.maxLat, combinedBBox.maxLng]
+            ],
+            { padding: [40, 40], maxZoom: 16 }
+          );
+        }
+      } catch (err) {
+        console.warn('fitBounds error in fitAllTrigger:', err);
       }
     }
   }, [fitAllTrigger, layers]);
@@ -966,16 +988,50 @@ export default function MapViewer({
     prevZoomTimestampRef.current = zoomToTrigger.timestamp || Date.now();
 
     if (zoomToTrigger.bounds) {
-      mapInstanceRef.current.fitBounds(zoomToTrigger.bounds, { padding: [40, 40], maxZoom: 17 });
+      try {
+        const b = zoomToTrigger.bounds;
+        if (Array.isArray(b) && b.length === 2 && Array.isArray(b[0]) && Array.isArray(b[1])) {
+          const swLat = Number(b[0][0]);
+          const swLng = Number(b[0][1]);
+          const neLat = Number(b[1][0]);
+          const neLng = Number(b[1][1]);
+          if (
+            Number.isFinite(swLat) &&
+            Number.isFinite(swLng) &&
+            Number.isFinite(neLat) &&
+            Number.isFinite(neLng) &&
+            Math.abs(swLat) <= 90 &&
+            Math.abs(neLat) <= 90 &&
+            Math.abs(swLng) <= 180 &&
+            Math.abs(neLng) <= 180
+          ) {
+            const isZeroSize = Math.abs(swLat - neLat) < 0.00001 && Math.abs(swLng - neLng) < 0.00001;
+            if (isZeroSize) {
+              mapInstanceRef.current.setView([swLat, swLng], Math.max(mapInstanceRef.current.getZoom(), 16));
+            } else {
+              mapInstanceRef.current.fitBounds([[swLat, swLng], [neLat, neLng]], {
+                padding: [40, 40],
+                maxZoom: 17
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('fitBounds error in zoomToTrigger:', err);
+      }
       return;
     }
 
     const targetLayer = layers.find((l) => l.id === zoomToTrigger.layerId);
     if (!targetLayer || !targetLayer.data) return;
 
-    const { leafletBounds, isValid } = calculateBBox(targetLayer.data);
-    if (isValid) {
-      mapInstanceRef.current.fitBounds(leafletBounds, { padding: [40, 40], maxZoom: 16 });
+    try {
+      const { leafletBounds, isValid } = calculateBBox(targetLayer.data);
+      if (isValid && leafletBounds) {
+        mapInstanceRef.current.fitBounds(leafletBounds, { padding: [40, 40], maxZoom: 16 });
+      }
+    } catch (err) {
+      console.warn('fitBounds error for targetLayer:', err);
     }
   }, [zoomToTrigger, layers]);
 
@@ -985,11 +1041,15 @@ export default function MapViewer({
     if (!mapInstanceRef.current || hasAutoZoomedOnMountRef.current) return;
     const target = layers.find((l) => l.id === activeLayerId) || layers.find((l) => l.visible) || layers[0];
     if (target?.data) {
-      const { leafletBounds, isValid } = calculateBBox(target.data);
-      if (isValid) {
-        hasAutoZoomedOnMountRef.current = true;
-        mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.fitBounds(leafletBounds, { padding: [40, 40], maxZoom: 16 });
+      try {
+        const { leafletBounds, isValid } = calculateBBox(target.data);
+        if (isValid && leafletBounds) {
+          hasAutoZoomedOnMountRef.current = true;
+          mapInstanceRef.current.invalidateSize();
+          mapInstanceRef.current.fitBounds(leafletBounds, { padding: [40, 40], maxZoom: 16 });
+        }
+      } catch (err) {
+        console.warn('Initial auto-zoom error:', err);
       }
     }
   }, [layers, activeLayerId]);
@@ -1150,9 +1210,13 @@ export default function MapViewer({
                     return val === legendSelectedCategory.value;
                   });
                   if (matched.length) {
-                    const b = calculateBBox({ type: 'FeatureCollection', features: matched });
-                    if (b && mapInstanceRef.current) {
-                      mapInstanceRef.current.fitBounds(b, { padding: [70, 70], maxZoom: 16 });
+                    try {
+                      const { leafletBounds, isValid } = calculateBBox({ type: 'FeatureCollection', features: matched });
+                      if (isValid && leafletBounds && mapInstanceRef.current) {
+                        mapInstanceRef.current.fitBounds(leafletBounds, { padding: [70, 70], maxZoom: 16 });
+                      }
+                    } catch (err) {
+                      console.warn('Crosshair zoom error:', err);
                     }
                   }
                 }

@@ -35,7 +35,7 @@ export default function LandUseSummary({
         <div className="flex items-center gap-2">
           <PieChart className="size-5 text-volt text-[#e6ff2e]" />
           <h4 className="text-base font-bold text-white tracking-tight">
-            Gambaran Penggunaan Tanah
+            Penggunaan Tanah
           </h4>
         </div>
         <span className="text-[11px] font-mono text-slate-400">

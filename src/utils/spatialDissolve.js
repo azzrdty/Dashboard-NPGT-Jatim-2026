@@ -183,6 +183,7 @@ export const ANALYSIS_FIELD_SPECS = {
     'DRAINS',
     'Dname'
   ],
+  NAMOBJ: ['NAMOBJ'],
   KSPOLA: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'QREKLAS'],
   COMPATB: ['NAMOBJ', 'FKWS', 'COMPATB'],
   OPTNH: ['QNAME5', 'FKWS', 'OPTNH', 'OPTIMALTNH'],
@@ -201,11 +202,50 @@ ANALYSIS_FIELD_SPECS.D = ANALYSIS_FIELD_SPECS.Dname;
 ANALYSIS_FIELD_SPECS.E = ANALYSIS_FIELD_SPECS.Ename;
 
 const FIELD_ALIASES = {
+  NAMOBJ: ['NAMOBJ', 'RENCANA_TATA_RUANG', 'POLA_RUANG', 'RTRW', 'RDTR', 'RENCANA_POLA_RUANG'],
   QNAME5: ['QNAME5', 'QNAME25', 'PENGGUNAAN_TANAH'],
   KSPOLA: ['KSPOLA', 'KS_POLA'],
   OPTNH: ['OPTNH', 'OPTIMALTNH', 'OPTIMAL_TNH', 'KEOPTIMALAN'],
   OPTIMALTNH: ['OPTIMALTNH', 'OPTNH', 'OPTIMAL_TNH', 'KEOPTIMALAN'],
-  LUAS_HA: ['LUAS_HA', 'LUAS', 'SHAPE_AREA', 'AREA_HA'],
+  LUAS_HA: [
+    'LUAS_HA',
+    'LUASHA',
+    'LUAS_Ha',
+    'Luas_Ha',
+    'LuasHa',
+    'luas_ha',
+    'luasha',
+    'LUAS_HEKTAR',
+    'LUAS_HEKTARE',
+    'LUASHEKTAR',
+    'LUAS_BIDANG',
+    'LUASBIDANG',
+    'LUASAN',
+    'LUAS',
+    'Luas',
+    'luas',
+    'AREA_HA',
+    'AREAHA',
+    'Area_Ha',
+    'AreaHa',
+    'area_ha',
+    'areaha',
+    'AREA',
+    'Area',
+    'area',
+    'HECTARES',
+    'HECTARE',
+    'HA',
+    'Ha',
+    'ha',
+    'SHAPE_AREA',
+    'SHAP_AREA',
+    'Shape_Area',
+    'shape_area',
+    'ST_AREA'
+  ],
+  LUASHA: ['LUASHA', 'LUAS_HA', 'LUAS', 'AREA_HA', 'AREAHA'],
+  LUAS: ['LUAS', 'LUAS_HA', 'LUASHA', 'AREA_HA', 'AREAHA'],
   Lname: ['Lname', 'LNAME', 'Llabel', 'LLABEL', 'L', 'LERENG', 'KELERENGAN'],
   Uname: ['Uname', 'UNAME', 'Ulabel', 'ULABEL', 'U', 'KDEFEK', 'KEDALAMAN_EFEKTIF', 'KEDALAMAN'],
   Xname: ['Xname', 'XNAME', 'Xlabel', 'XLABEL', 'X', 'TEKSTUR', 'TEKSTUR_TANAH'],
@@ -751,7 +791,11 @@ export function dissolveByAnalysisIndicator(featureCollection, indicatorKey) {
     'Elabel',
     'EROSI',
     'E',
-    'OPTIMALTNH'
+    'OPTIMALTNH',
+    'LUASHA',
+    'LUAS',
+    'AREA_HA',
+    'AREAHA'
   ]);
   const resolvedGroupCols = orderedGroupFields
     .map((f) => ({
@@ -789,7 +833,20 @@ export function dissolveByAnalysisIndicator(featureCollection, indicatorKey) {
     const grp = groups[gId];
     grp.fIndices.push(fIdx);
 
-    const rawArea = props[luasActualCol];
+    let rawArea = props[luasActualCol];
+    if (rawArea === undefined || rawArea === null || rawArea === '') {
+      rawArea =
+        props.LUAS_HA ??
+        props.LUASHA ??
+        props.luas_ha ??
+        props.luasha ??
+        props.LUAS ??
+        props.luas ??
+        props.AREA_HA ??
+        props.areaha ??
+        props.AREA ??
+        props.area;
+    }
     if (rawArea !== undefined && rawArea !== null && rawArea !== '') {
       const parsedArea = Number.parseFloat(String(rawArea).replace(',', '.'));
       if (Number.isFinite(parsedArea)) {
@@ -820,6 +877,8 @@ export function dissolveByAnalysisIndicator(featureCollection, indicatorKey) {
       }
     }
     orderedProps.LUAS_HA = Number(areaSum.toFixed(6));
+    orderedProps.LUASHA = orderedProps.LUAS_HA;
+    orderedProps.LUAS = orderedProps.LUAS_HA;
 
     // Ensure fallback property mirrors are populated for Kemampuan Tanah
     if (orderedProps.Lname && !orderedProps.LERENG) orderedProps.LERENG = orderedProps.Lname;

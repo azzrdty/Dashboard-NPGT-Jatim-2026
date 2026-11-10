@@ -13,7 +13,8 @@ import {
   Crosshair,
   Download,
   FileCheck,
-  Split
+  Split,
+  RotateCcw
 } from 'lucide-react';
 
 import MapViewer from './components/MapViewer';
@@ -24,6 +25,7 @@ import FeatureInspector from './components/FeatureInspector';
 import UploadModal from './components/UploadModal';
 import LegendWidget from './components/LegendWidget';
 import NpgtDashboard from './components/NpgtDashboard';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import { parseShapefileZip, reprojectLayerData } from './utils/geoParser';
 import { calculateBBox } from './utils/spatialCalculations';
@@ -71,7 +73,7 @@ export default function App() {
   // Active layer object
   const activeLayer = layers.find((l) => l.id === activeLayerId) || layers[0] || null;
 
-  // Ensure existing NPGT layer sets in memory include the Penggunaan Tanah & Kemampuan Tanah layers
+  // Ensure existing NPGT layer sets in memory include the Penggunaan Tanah, Kemampuan Tanah & Rencana Tata Ruang layers
   useEffect(() => {
     const hasDjpaSet = layers.some((l) => l.id.startsWith('djpa-layer-'));
     const hasLandUseLayer = layers.some(
@@ -86,7 +88,10 @@ export default function App() {
           'L', 'U', 'X', 'D', 'E'
         ].includes(l.npgtKey)
     );
-    if (hasDjpaSet && (!hasLandUseLayer || !hasCapabilityLayer)) {
+    const hasSpatialPlanLayer = layers.some(
+      (l) => l.isSpatialPlan || l.npgtKey === 'NAMOBJ'
+    );
+    if (hasDjpaSet && (!hasLandUseLayer || !hasCapabilityLayer || !hasSpatialPlanLayer)) {
       const baseDjpa = layers.find((l) => l.id.startsWith('djpa-layer-') && l.sourceData);
       if (baseDjpa) {
         const rebuilt = create8NpgtLayers(baseDjpa);
@@ -318,6 +323,23 @@ export default function App() {
     });
   }, []);
 
+  // Reset entire application data and view to fresh initial state
+  const handleResetData = useCallback(() => {
+    setLayers([]);
+    setActiveLayerId(null);
+    setLegendSelectedCategory(null);
+    setSelectedFeature(null);
+    setSelectedFeatureLayer(null);
+    setTableLayerId(null);
+    setIsThematicOpen(false);
+    setThematicLayerId(null);
+    setIsLayerPanelOpen(true);
+    setCurrentView('map');
+    setIsUploadOpen(true);
+    setZoomToTrigger(null);
+    setFitAllTrigger(0);
+  }, []);
+
   const handleZoomToLayer = useCallback((id) => {
     setZoomToTrigger({ layerId: id, timestamp: Date.now() });
   }, []);
@@ -329,9 +351,13 @@ export default function App() {
 
   const handleZoomToFeature = useCallback((feature) => {
     if (!feature) return;
-    const { leafletBounds, isValid } = calculateBBox(feature);
-    if (isValid) {
-      setZoomToTrigger({ bounds: leafletBounds, timestamp: Date.now() });
+    try {
+      const { leafletBounds, isValid } = calculateBBox(feature);
+      if (isValid && leafletBounds) {
+        setZoomToTrigger({ bounds: leafletBounds, timestamp: Date.now() });
+      }
+    } catch (err) {
+      console.warn('handleZoomToFeature error:', err);
     }
   }, []);
 
@@ -403,6 +429,7 @@ export default function App() {
       (l) =>
         l.npgtKey === indKey ||
         (indKey === 'OPTNH' && l.npgtKey === 'OPTIMALTNH') ||
+        (indKey === 'NAMOBJ' && (l.isSpatialPlan || l.npgtKey === 'NAMOBJ')) ||
         (indKey === 'QNAME5' && (l.isLandUse || l.npgtKey === 'QNAME5' || l.npgtKey === 'QREKLAS')) ||
         (indKey === 'Lname' &&
           (l.isLandCapability ||
@@ -431,6 +458,7 @@ export default function App() {
             (l) =>
               l.npgtKey === indKey ||
               (indKey === 'OPTNH' && l.npgtKey === 'OPTIMALTNH') ||
+              (indKey === 'NAMOBJ' && (l.isSpatialPlan || l.npgtKey === 'NAMOBJ')) ||
               (indKey === 'QNAME5' && l.isLandUse) ||
               (indKey === 'Lname' && l.isLandCapability)
           ) || splitLayers[0];
@@ -585,6 +613,18 @@ export default function App() {
             </button>
           )}
 
+          {layers.length > 0 && (
+            <button
+              type="button"
+              title="Kembalikan tampilan ke kondisi default awal"
+              onClick={handleResetData}
+              className="flex items-center gap-1.5 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500 hover:border-red-400 text-red-300 hover:text-red-200 px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-colors"
+            >
+              <RotateCcw className="size-3.5 text-red-400" />
+              <span>Mulai Ulang</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsUploadOpen(true)}
@@ -626,51 +666,88 @@ export default function App() {
 
             {/* Interactive Leaflet Map Center */}
             <main className="flex-1 relative h-full">
-              <MapViewer
-                layers={layers}
-                selectedFeature={selectedFeature}
-                onSelectFeature={handleSelectFeature}
-                activeLayer={activeLayer}
-                activeLayerId={activeLayerId}
-                onSelectActiveLayer={handleSelectActiveLayer}
-                zoomToTrigger={zoomToTrigger}
-                fitAllTrigger={fitAllTrigger}
-                onOpenUpload={() => setIsUploadOpen(true)}
-                onToggleAllOutlines={handleToggleAllOutlines}
-                legendSelectedCategory={legendSelectedCategory}
-                onClearLegendCategory={() => setLegendSelectedCategory(null)}
-              />
+              <ErrorBoundary title="Kendala Peta Spasial">
+                <MapViewer
+                  layers={layers}
+                  selectedFeature={selectedFeature}
+                  onSelectFeature={handleSelectFeature}
+                  activeLayer={activeLayer}
+                  activeLayerId={activeLayerId}
+                  onSelectActiveLayer={handleSelectActiveLayer}
+                  zoomToTrigger={zoomToTrigger}
+                  fitAllTrigger={fitAllTrigger}
+                  onOpenUpload={() => setIsUploadOpen(true)}
+                  onToggleAllOutlines={handleToggleAllOutlines}
+                  legendSelectedCategory={legendSelectedCategory}
+                  onClearLegendCategory={() => setLegendSelectedCategory(null)}
+                />
+              </ErrorBoundary>
 
               {/* Floating Map Legend */}
-              <LegendWidget
-                layers={layers}
-                selectedCategory={legendSelectedCategory}
-                onSelectCategory={handleSelectLegendCategory}
-                onOpenTable={(id) => setTableLayerId(id)}
-                onToggleLandUseMode={handleToggleLandUseMode}
-                onToggleCapabilityMode={handleToggleCapabilityMode}
-              />
+              <ErrorBoundary title="Kendala Legenda Peta">
+                <LegendWidget
+                  layers={layers}
+                  selectedCategory={legendSelectedCategory}
+                  onSelectCategory={handleSelectLegendCategory}
+                  onOpenTable={(id) => setTableLayerId(id)}
+                  onToggleLandUseMode={handleToggleLandUseMode}
+                  onToggleCapabilityMode={handleToggleCapabilityMode}
+                />
+              </ErrorBoundary>
             </main>
 
             {/* Feature Inspector Panel (Right Drawer) */}
             {selectedFeature && (
-              <FeatureInspector
-                feature={selectedFeature}
-                layer={selectedFeatureLayer}
-                onClose={() => setSelectedFeature(null)}
-                onZoomToFeature={handleZoomToFeature}
-              />
+              <ErrorBoundary
+                title="Gagal Memuat Rincian Poligon"
+                fallback={(error) => (
+                  <aside className="flex flex-col h-full w-80 sm:w-88 bg-[#0A0F16] border-l border-slate-800/80 p-5 text-slate-200 shrink-0 z-10 justify-center items-center text-center">
+                    <p className="text-xs text-amber-400 mb-2 font-semibold">Gagal memuat rincian fitur</p>
+                    <p className="text-[11px] text-slate-400 mb-4">{error?.message || 'Format atribut poligon tidak dikenali.'}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFeature(null)}
+                      className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-white transition-colors"
+                    >
+                      Tutup Inspector
+                    </button>
+                  </aside>
+                )}
+              >
+                <FeatureInspector
+                  feature={selectedFeature}
+                  layer={selectedFeatureLayer}
+                  onClose={() => setSelectedFeature(null)}
+                  onZoomToFeature={handleZoomToFeature}
+                />
+              </ErrorBoundary>
             )}
 
             {/* Attribute Table Drawer (Bottom) */}
             {tableLayerId && (
-              <AttributeTable
-                layer={layers.find((l) => l.id === tableLayerId)}
-                selectedFeature={selectedFeature}
-                onSelectFeature={handleSelectFeature}
-                onClose={() => setTableLayerId(null)}
-                onZoomToFeature={handleZoomToFeature}
-              />
+              <ErrorBoundary
+                title="Gagal Memuat Tabel Atribut"
+                fallback={(error) => (
+                  <div className="fixed bottom-0 left-0 right-0 z-[600] flex flex-col items-center justify-center p-6 bg-[#0B111A]/98 border-t border-red-500/30 text-white">
+                    <p className="text-xs text-red-400 mb-2 font-semibold">Tabel atribut mengalami kendala membaca data.</p>
+                    <button
+                      type="button"
+                      onClick={() => setTableLayerId(null)}
+                      className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-white transition-colors"
+                    >
+                      Tutup Tabel
+                    </button>
+                  </div>
+                )}
+              >
+                <AttributeTable
+                  layer={layers.find((l) => l.id === tableLayerId)}
+                  selectedFeature={selectedFeature}
+                  onSelectFeature={handleSelectFeature}
+                  onClose={() => setTableLayerId(null)}
+                  onZoomToFeature={handleZoomToFeature}
+                />
+              </ErrorBoundary>
             )}
           </>
         ) : (

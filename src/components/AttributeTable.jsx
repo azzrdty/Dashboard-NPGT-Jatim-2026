@@ -259,14 +259,23 @@ export default function AttributeTable({
               ) : (
                 paginatedFeatures.map((f, index) => {
                   const rowNumber = (page - 1) * pageSize + index + 1;
-                  const isSelected = selectedFeature?.id === f.id;
+                  const isSelected =
+                    Boolean(selectedFeature) &&
+                    (selectedFeature === f ||
+                      (selectedFeature.id !== undefined &&
+                        f.id !== undefined &&
+                        selectedFeature.id === f.id));
 
                   return (
                     <tr
                       key={f.id || index}
                       onClick={() => {
-                        onSelectFeature(f, layer);
-                        if (onZoomToFeature) onZoomToFeature(f);
+                        try {
+                          if (onSelectFeature) onSelectFeature(f, layer);
+                          if (onZoomToFeature) onZoomToFeature(f);
+                        } catch (err) {
+                          console.error('Error selecting feature:', err);
+                        }
                       }}
                       className={`cursor-pointer transition-colors ${
                         isSelected
@@ -280,7 +289,19 @@ export default function AttributeTable({
                       {columns.map((col) => {
                         const val = f.properties?.[col];
                         const isPrimary = layer.npgtKey === col;
-                        const isArea = col === 'LUAS_HA' && typeof val === 'number';
+                        const isArea =
+                          [
+                            'LUAS_HA',
+                            'LUASHA',
+                            'LUAS',
+                            'AREA_HA',
+                            'AREAHA',
+                            'AREA',
+                            'LUAS_HEKTAR',
+                            'LUAS_BIDANG',
+                            'LUASAN',
+                            'SHAPE_AREA'
+                          ].includes(col.toUpperCase()) && typeof val === 'number';
                         return (
                           <td
                             key={col}

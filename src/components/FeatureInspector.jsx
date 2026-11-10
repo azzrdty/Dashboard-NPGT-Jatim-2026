@@ -16,7 +16,7 @@ import {
   formatArea,
   formatLength
 } from '../utils/spatialCalculations';
-import { FIELD_LABELS } from '../utils/npgtData';
+import { FIELD_LABELS, getFeatureAreaHa } from '../utils/npgtData';
 
 const ADMIN_KEY_SET = new Set([
   'WADMPR',
@@ -27,7 +27,15 @@ const ADMIN_KEY_SET = new Set([
   'KDPKAB',
   'KDCPUM',
   'KDEPUM',
-  'LUAS_HA'
+  'LUAS_HA',
+  'LUASHA',
+  'LUAS',
+  'AREA_HA',
+  'AREAHA',
+  'AREA',
+  'LUAS_HEKTAR',
+  'LUAS_BIDANG',
+  'SHAPE_AREA'
 ]);
 
 export default function FeatureInspector({
@@ -58,39 +66,44 @@ export default function FeatureInspector({
     props.WADMKC ||
     props.name ||
     props.NAME ||
-    feature?.id ||
+    (feature?.id !== undefined ? String(feature.id) : null) ||
     'Fitur Spasial';
-  const title = npgtVal ? `${npgtVal}` : baseTitle;
+  const title = String(npgtVal ? npgtVal : baseTitle);
   const subtitle = [
     props.WADMKD ? `Desa ${props.WADMKD}` : '',
     props.WADMKC ? `Kec. ${props.WADMKC}` : ''
   ]
     .filter(Boolean)
+    .map(String)
     .join(' • ');
 
-  // Calculate geometric properties
+  // Calculate geometric properties safely
   const geoStats = useMemo(() => {
     if (!feature?.geometry) return null;
-    const type = feature.geometry.type;
-    const coords = feature.geometry.coordinates;
+    try {
+      const type = feature.geometry.type;
+      const coords = feature.geometry.coordinates;
 
-    if (type === 'Polygon' || type === 'MultiPolygon') {
-      const luasAttr = props.LUAS_HA !== undefined ? Number(props.LUAS_HA) : NaN;
-      const areaDisplay =
-        Number.isFinite(luasAttr) && luasAttr > 0
-          ? `${luasAttr.toLocaleString('id-ID', { maximumFractionDigits: 3 })} Ha`
-          : formatArea(calculatePolygonArea(coords, type));
-      return {
-        area: areaDisplay
-      };
-    } else if (type === 'LineString' || type === 'MultiLineString') {
-      const lengthM = calculateLineLength(coords, type);
-      return {
-        length: formatLength(lengthM)
-      };
+      if (type === 'Polygon' || type === 'MultiPolygon') {
+        const luasAttr = getFeatureAreaHa(feature);
+        const areaDisplay =
+          Number.isFinite(luasAttr) && luasAttr > 0
+            ? `${luasAttr.toLocaleString('id-ID', { maximumFractionDigits: 3 })} Ha`
+            : formatArea(calculatePolygonArea(coords, type));
+        return {
+          area: areaDisplay
+        };
+      } else if (type === 'LineString' || type === 'MultiLineString') {
+        const lengthM = calculateLineLength(coords, type);
+        return {
+          length: formatLength(lengthM)
+        };
+      }
+    } catch (err) {
+      console.warn('FeatureInspector geoStats error:', err);
     }
     return null;
-  }, [feature, props.LUAS_HA]);
+  }, [feature]);
 
   // Separate properties into technical lineage vs administrative
   const { technicalProps, adminProps, totalPropCount } = useMemo(() => {
@@ -126,11 +139,21 @@ export default function FeatureInspector({
   const renderPropRow = ([k, v]) => {
     const label = FIELD_LABELS[k];
     const isPrimaryAnalysis = activeCol === k || layer?.npgtKey === k;
+    const isAreaCol = [
+      'LUAS_HA',
+      'LUASHA',
+      'LUAS',
+      'AREA_HA',
+      'AREAHA',
+      'LUAS_HEKTAR',
+      'LUAS_BIDANG',
+      'LUASAN'
+    ].includes(String(k).toUpperCase());
     const displayVal =
-      k === 'LUAS_HA' && Number.isFinite(Number(v))
+      isAreaCol && Number.isFinite(Number(v))
         ? `${Number(v).toLocaleString('id-ID', { maximumFractionDigits: 4 })} Ha`
         : v !== undefined && v !== null && v !== ''
-        ? String(v)
+        ? (typeof v === 'object' ? JSON.stringify(v) : String(v))
         : '(kosong)';
 
     return (
