@@ -80,10 +80,8 @@ export default function FeatureInspector({
         Number.isFinite(luasAttr) && luasAttr > 0
           ? `${luasAttr.toLocaleString('id-ID', { maximumFractionDigits: 3 })} Ha`
           : formatArea(calculatePolygonArea(coords, type));
-      const perimM = calculateLineLength(coords, type === 'Polygon' ? 'LineString' : 'MultiLineString');
       return {
-        area: areaDisplay,
-        perimeter: formatLength(perimM)
+        area: areaDisplay
       };
     } else if (type === 'LineString' || type === 'MultiLineString') {
       const lengthM = calculateLineLength(coords, type);
@@ -208,7 +206,7 @@ export default function FeatureInspector({
 
       {/* Geometry Measurement Stats */}
       {geoStats && (
-        <div className="grid grid-cols-2 gap-2 px-3.5 py-2.5 bg-[#070B10]/40 border-b border-slate-800/80 text-xs">
+        <div className="px-3.5 py-2.5 bg-[#070B10]/40 border-b border-slate-800/80 text-xs">
           {geoStats.area && (
             <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0E1621] border border-slate-800/90">
               <Square className="size-3.5 text-teal-400 shrink-0" />
@@ -221,20 +219,8 @@ export default function FeatureInspector({
             </div>
           )}
 
-          {geoStats.perimeter && (
-            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0E1621] border border-slate-800/90">
-              <Ruler className="size-3.5 text-amber-400 shrink-0" />
-              <div className="min-w-0">
-                <span className="block text-[10px] text-slate-400">Keliling</span>
-                <span className="font-mono font-semibold text-white tabular-nums truncate block">
-                  {geoStats.perimeter}
-                </span>
-              </div>
-            </div>
-          )}
-
           {geoStats.length && (
-            <div className="col-span-2 flex items-center gap-2.5 p-2 rounded-xl bg-[#0E1621] border border-slate-800/90">
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0E1621] border border-slate-800/90">
               <Ruler className="size-3.5 text-teal-400 shrink-0" />
               <div>
                 <span className="block text-[10px] text-slate-400">Panjang Garis</span>

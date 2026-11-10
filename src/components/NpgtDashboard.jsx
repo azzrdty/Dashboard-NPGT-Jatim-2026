@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BarChart3,
   Filter,
@@ -12,7 +12,8 @@ import {
   MapPin,
   Building,
   Layers,
-  PieChart
+  PieChart,
+  X
 } from 'lucide-react';
 
 import {
@@ -28,7 +29,9 @@ import {
   parseAnalysis,
   createDemoRows,
   hasQreklasColumn,
-  hasLandCapabilityColumns
+  hasLandCapabilityColumns,
+  findCapabilityColumn,
+  getIndicatorDetails
 } from '../utils/npgtData';
 
 export default function NpgtDashboard({
@@ -45,6 +48,18 @@ export default function NpgtDashboard({
   const [unitMode, setUnitMode] = useState('ha'); // 'ha' | 'count'
   const [activeIndicator, setActiveIndicator] = useState('KSPOLA');
   const [useDemoMode, setUseDemoMode] = useState(false);
+  const [infoModalKey, setInfoModalKey] = useState(null);
+
+  useEffect(() => {
+    if (!infoModalKey) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setInfoModalKey(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [infoModalKey]);
 
   // Collapsible cards state for analysis groups (default: all collapsed)
   const [openGroups, setOpenGroups] = useState({});
@@ -142,7 +157,9 @@ export default function NpgtDashboard({
   const effectiveLandUseMode = hasQreklas ? landUseMode : 'QNAME5';
   const activeCapSpec =
     CAPABILITY_MODES.find((m) => m.mode === capabilityMode) || CAPABILITY_MODES[0];
-  const effectiveCapColumn = activeCapSpec.column;
+  const effectiveCapColumn = useMemo(() => {
+    return findCapabilityColumn(layer, capabilityMode);
+  }, [layer, capabilityMode]);
 
   // Extract unique desa list
   const desas = useMemo(() => {
@@ -161,7 +178,14 @@ export default function NpgtDashboard({
       return Object.entries(filters).every(([k, v]) => {
         if (k === excludeKey) return true;
         if (k === 'QNAME5') return r[effectiveLandUseMode] === v;
-        if (k === 'Lname') return r[effectiveCapColumn] === v;
+        if (k === 'Lname') {
+          return (
+            r[effectiveCapColumn] === v ||
+            r[activeCapSpec.column] === v ||
+            r[activeCapSpec.replacementCol] === v
+          );
+        }
+        if (k === 'OPTNH') return r.OPTNH === v || r.OPTIMALTNH === v;
         return r[k] === v;
       });
     });
@@ -179,7 +203,10 @@ export default function NpgtDashboard({
           ? effectiveCapColumn
           : ind.key;
         filterRows(ind.key).forEach((r) => {
-          const val = r[propKey] || '(kosong)';
+          const val =
+            (ind.isLandCapability
+              ? r[effectiveCapColumn] || r[activeCapSpec.column] || r[activeCapSpec.replacementCol]
+              : r[propKey]) || '(kosong)';
           const weight = getVal(r);
           catMap.set(val, (catMap.get(val) || 0) + weight);
           tot += weight;
@@ -229,6 +256,10 @@ export default function NpgtDashboard({
 
   const currentAttr = indicators.find((a) => a.key === activeIndicator) || indicators[0];
   const currentStat = indicatorStats[activeIndicator] || { tot: 0, list: [] };
+  const activeDetails = getIndicatorDetails(currentAttr.key);
+  const modalIndicator = infoModalKey ? indicators.find((a) => a.key === infoModalKey) : null;
+  const modalDetails = infoModalKey ? getIndicatorDetails(infoModalKey) : null;
+  const modalStat = infoModalKey ? indicatorStats[infoModalKey] : null;
 
   const handleToggleFilter = (key, val) => {
     setFilters((prev) => {
@@ -294,7 +325,7 @@ export default function NpgtDashboard({
       label: 'Keoptimalan Tanah',
       pct: totalVal
         ? Math.round(
-            (sum(currentFiltered.filter((r) => /^optimal$/i.test(String(r.OPTNH || '')))) / totalVal) * 100
+            (sum(currentFiltered.filter((r) => /^optimal$/i.test(String(r.OPTNH || r.OPTIMALTNH || '')))) / totalVal) * 100
           )
         : 0
     },
@@ -543,20 +574,46 @@ export default function NpgtDashboard({
                           const isActive = a.key === activeIndicator;
                           const stat = indicatorStats[a.key];
                           const topCat = stat?.list?.[0];
+                          const isModalOpen = infoModalKey === a.key;
 
                           return (
-                            <button
+                            <div
                               key={a.key}
-                              type="button"
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleSelectIndicator(a.key, gIndex)}
-                              className={`w-full text-left p-3 rounded-xl transition-all border ${
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleSelectIndicator(a.key, gIndex);
+                                }
+                              }}
+                              className={`w-full text-left p-3 rounded-xl transition-all border cursor-pointer ${
                                 isActive
                                   ? 'bg-teal-500/10 border-teal-500/45 shadow-sm'
                                   : 'bg-[#070B10]/70 border-white/[0.06] hover:bg-white/[0.03] hover:border-white/[0.12]'
                               }`}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold text-white">{a.title}</span>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <button
+                                    type="button"
+                                    title={isModalOpen ? "Tutup Jendela Informasi" : "Lihat Informasi Metodologi (Pop-up)"}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInfoModalKey((prev) => (prev === a.key ? null : a.key));
+                                    }}
+                                    className={`p-1 rounded-md transition-colors shrink-0 ${
+                                      isModalOpen
+                                        ? 'text-cyan-300 bg-cyan-500/20 ring-1 ring-cyan-500/40'
+                                        : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <Info className="size-3" />
+                                  </button>
+                                  <span className="text-xs font-semibold text-white truncate">{a.title}</span>
+                                </div>
+
                                 {a.isLandUse && hasQreklas ? (
                                   <div
                                     onClick={(e) => e.stopPropagation()}
@@ -615,7 +672,7 @@ export default function NpgtDashboard({
                                     })}
                                   </div>
                                 ) : (
-                                  <span className="text-[10px] font-mono text-teal-300 px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/25">
+                                  <span className="text-[10px] font-mono text-teal-300 px-1.5 py-0.5 rounded bg-teal-500/15 border border-teal-500/25 shrink-0">
                                     {a.key}
                                   </span>
                                 )}
@@ -645,7 +702,7 @@ export default function NpgtDashboard({
                                     : '0%'}
                                 </span>
                               </div>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -664,6 +721,20 @@ export default function NpgtDashboard({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-xl font-bold text-white tracking-tight">{currentAttr.title}</h2>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInfoModalKey((prev) => (prev === currentAttr.key ? null : currentAttr.key))}
+                      title={infoModalKey === currentAttr.key ? "Tutup Jendela Informasi" : "Lihat Informasi Metodologi (Pop-up)"}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors border cursor-pointer ${
+                        infoModalKey === currentAttr.key
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-xs'
+                          : 'bg-[#070B10] text-slate-400 border-slate-700/80 hover:text-white hover:border-slate-600'
+                      }`}
+                    >
+                      <Info className="size-3.5 text-cyan-400" />
+                      <span>Info Analisis</span>
+                    </button>
+
                     <span className="text-[11px] font-mono text-slate-400">
                       {currentStat.list.length} kategori
                     </span>
@@ -810,6 +881,128 @@ export default function NpgtDashboard({
           </div>
         </div>
       </div>
+
+      {/* Pop-up Window Informasi Analisis NPGT */}
+      {modalIndicator && modalDetails && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setInfoModalKey(null)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-[#0B131E] border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] text-slate-200 select-text animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#070B10]/70">
+              <div className="flex items-center gap-2.5 min-w-0 pr-3">
+                <div className="size-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 grid place-items-center text-cyan-400 shrink-0">
+                  <Info className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white tracking-tight truncate">
+                    {modalDetails.title}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="rounded bg-cyan-500/15 px-2 py-0.2 text-[10px] font-medium text-cyan-300 border border-cyan-500/30">
+                      {modalDetails.subtitle}
+                    </span>
+                    <span className="font-mono text-[10px] text-teal-300 bg-teal-500/10 px-1.5 py-0.2 rounded border border-teal-500/20">
+                      {modalIndicator.key}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setInfoModalKey(null)}
+                className="size-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 grid place-items-center transition-colors shrink-0 cursor-pointer"
+                title="Tutup (Esc)"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 overflow-y-auto text-xs leading-relaxed">
+              {/* Formula & Pertemuan Data */}
+              <div className="rounded-xl bg-cyan-950/30 border border-cyan-500/25 p-3.5 space-y-1.5">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-cyan-300">
+                  Pertemuan Data & Formula Analisis
+                </div>
+                <div className="font-mono text-xs font-semibold text-cyan-100">
+                  {modalDetails.formula}
+                </div>
+                <div className="text-[11px] text-slate-300 pt-1 border-t border-cyan-500/15">
+                  <span className="text-slate-400 font-medium">Sumber Data Input:</span> {modalDetails.source}
+                </div>
+              </div>
+
+              {/* Tujuan Analisis */}
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">
+                  Tujuan Analisis
+                </span>
+                <p className="text-slate-200 text-xs">
+                  {modalDetails.purpose}
+                </p>
+              </div>
+
+              {/* Kamus Klasifikasi Kategori */}
+              {modalDetails.categories?.length > 0 && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1.5">
+                    Kamus Klasifikasi Kategori
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {modalDetails.categories.map((c) => (
+                      <div key={c.code} className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px]">
+                        <span className="font-semibold text-teal-300 font-mono block">{c.code}</span>
+                        <span className="text-slate-400 text-[11px] mt-0.5 block">{c.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Implikasi Kebijakan */}
+              <div className="rounded-xl bg-amber-950/25 border border-amber-500/25 p-3.5 space-y-1">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-amber-300">
+                  Implikasi Kebijakan & Rencana Tindak
+                </div>
+                <p className="text-amber-200/90 text-xs">
+                  {modalDetails.implication}
+                </p>
+              </div>
+
+              {/* Ringkasan Data Indikator Wilayah Saat Ini */}
+              {modalStat && modalStat.tot > 0 && (
+                <div className="pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-400">
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <span className="text-[9px] text-slate-500 uppercase block font-sans">Total Luas Teranalisis</span>
+                    <span className="text-slate-200 font-semibold">{formatNumber(modalStat.tot)} Ha</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <span className="text-[9px] text-slate-500 uppercase block font-sans">Jumlah Kategori</span>
+                    <span className="text-teal-300 font-semibold">{modalStat.list.length} Kelas</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-slate-800 bg-[#070B10]/70 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setInfoModalKey(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

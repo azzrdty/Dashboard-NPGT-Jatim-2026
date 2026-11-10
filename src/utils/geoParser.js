@@ -367,7 +367,7 @@ export function checkNpgtColumns(features) {
   if (!features || !features.length) return false;
   const sample = features[0]?.properties || {};
   const keys = Object.keys(sample).map((k) => k.toUpperCase());
-  const npgtKeys = ['KSPOLA', 'COMPATB', 'OPTNH', 'VNAME', 'V_ARAHAN', 'REKOMTNH', 'PASET'];
+  const npgtKeys = ['KSPOLA', 'COMPATB', 'OPTNH', 'OPTIMALTNH', 'VNAME', 'V_ARAHAN', 'REKOMTNH', 'PASET'];
   const matchCount = npgtKeys.filter((k) => keys.includes(k)).length;
   return matchCount >= 3;
 }

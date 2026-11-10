@@ -26,82 +26,201 @@ export const ANALYSIS_FIELD_SPECS = {
   Lname: [
     'Lname',
     'Llabel',
+    'LERENG',
     'KPTNH',
     'Uname',
     'Ulabel',
+    'KDEFEK',
     'Xname',
     'Xlabel',
+    'TEKSTUR',
     'Dname',
     'Dlabel',
+    'DRAINS',
     'Ename',
-    'Elabel'
+    'Elabel',
+    'EROSI'
   ],
   Uname: [
     'Uname',
     'Ulabel',
+    'KDEFEK',
     'KPTNH',
     'Lname',
     'Llabel',
+    'LERENG',
     'Xname',
     'Xlabel',
+    'TEKSTUR',
     'Dname',
     'Dlabel',
+    'DRAINS',
     'Ename',
-    'Elabel'
+    'Elabel',
+    'EROSI'
   ],
   Xname: [
     'Xname',
     'Xlabel',
+    'TEKSTUR',
     'KPTNH',
     'Lname',
     'Llabel',
+    'LERENG',
     'Uname',
     'Ulabel',
+    'KDEFEK',
     'Dname',
     'Dlabel',
+    'DRAINS',
     'Ename',
-    'Elabel'
+    'Elabel',
+    'EROSI'
   ],
   Dname: [
     'Dname',
     'Dlabel',
+    'DRAINS',
     'KPTNH',
     'Lname',
     'Llabel',
+    'LERENG',
     'Uname',
     'Ulabel',
+    'KDEFEK',
     'Xname',
     'Xlabel',
+    'TEKSTUR',
     'Ename',
-    'Elabel'
+    'Elabel',
+    'EROSI'
   ],
   Ename: [
     'Ename',
     'Elabel',
+    'EROSI',
     'KPTNH',
     'Lname',
     'Llabel',
+    'LERENG',
     'Uname',
     'Ulabel',
+    'KDEFEK',
     'Xname',
     'Xlabel',
+    'TEKSTUR',
     'Dname',
-    'Dlabel'
+    'Dlabel',
+    'DRAINS'
+  ],
+  LERENG: [
+    'LERENG',
+    'Lname',
+    'Llabel',
+    'KPTNH',
+    'KDEFEK',
+    'Uname',
+    'TEKSTUR',
+    'Xname',
+    'DRAINS',
+    'Dname',
+    'EROSI',
+    'Ename'
+  ],
+  KDEFEK: [
+    'KDEFEK',
+    'Uname',
+    'Ulabel',
+    'KPTNH',
+    'LERENG',
+    'Lname',
+    'TEKSTUR',
+    'Xname',
+    'DRAINS',
+    'Dname',
+    'EROSI',
+    'Ename'
+  ],
+  TEKSTUR: [
+    'TEKSTUR',
+    'Xname',
+    'Xlabel',
+    'KPTNH',
+    'LERENG',
+    'Lname',
+    'KDEFEK',
+    'Uname',
+    'DRAINS',
+    'Dname',
+    'EROSI',
+    'Ename'
+  ],
+  DRAINS: [
+    'DRAINS',
+    'Dname',
+    'Dlabel',
+    'KPTNH',
+    'LERENG',
+    'Lname',
+    'KDEFEK',
+    'Uname',
+    'TEKSTUR',
+    'Xname',
+    'EROSI',
+    'Ename'
+  ],
+  EROSI: [
+    'EROSI',
+    'Ename',
+    'Elabel',
+    'KPTNH',
+    'LERENG',
+    'Lname',
+    'KDEFEK',
+    'Uname',
+    'TEKSTUR',
+    'Xname',
+    'DRAINS',
+    'Dname'
   ],
   KSPOLA: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'QREKLAS'],
   COMPATB: ['NAMOBJ', 'FKWS', 'COMPATB'],
-  OPTNH: ['QNAME5', 'FKWS', 'OPTNH'],
+  OPTNH: ['QNAME5', 'FKWS', 'OPTNH', 'OPTIMALTNH'],
+  OPTIMALTNH: ['QNAME5', 'FKWS', 'OPTIMALTNH', 'OPTNH'],
   Vname: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'FKWS', 'ONAME5', 'VnameO', 'VnameW', 'Vname'],
   V_Arahan: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'FKWS_W', 'Vname', 'V_Arahan'],
   V_Khusus: ['NAMOBJ', 'COMPATB', 'Vname', 'V_Khusus'],
-  REKOMTNH: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'OPTNH', 'COMPATB', 'REKOMTNH'],
+  REKOMTNH: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'OPTNH', 'OPTIMALTNH', 'COMPATB', 'REKOMTNH'],
   PASET: ['QNAME5', 'NAMOBJ', 'KSPOLA', 'ONAME5', 'FKWS', 'Vname', 'REKOMTNH', 'PASET']
 };
+
+ANALYSIS_FIELD_SPECS.L = ANALYSIS_FIELD_SPECS.Lname;
+ANALYSIS_FIELD_SPECS.U = ANALYSIS_FIELD_SPECS.Uname;
+ANALYSIS_FIELD_SPECS.X = ANALYSIS_FIELD_SPECS.Xname;
+ANALYSIS_FIELD_SPECS.D = ANALYSIS_FIELD_SPECS.Dname;
+ANALYSIS_FIELD_SPECS.E = ANALYSIS_FIELD_SPECS.Ename;
 
 const FIELD_ALIASES = {
   QNAME5: ['QNAME5', 'QNAME25', 'PENGGUNAAN_TANAH'],
   KSPOLA: ['KSPOLA', 'KS_POLA'],
-  LUAS_HA: ['LUAS_HA', 'LUAS', 'SHAPE_AREA', 'AREA_HA']
+  OPTNH: ['OPTNH', 'OPTIMALTNH', 'OPTIMAL_TNH', 'KEOPTIMALAN'],
+  OPTIMALTNH: ['OPTIMALTNH', 'OPTNH', 'OPTIMAL_TNH', 'KEOPTIMALAN'],
+  LUAS_HA: ['LUAS_HA', 'LUAS', 'SHAPE_AREA', 'AREA_HA'],
+  Lname: ['Lname', 'LNAME', 'Llabel', 'LLABEL', 'L', 'LERENG', 'KELERENGAN'],
+  Uname: ['Uname', 'UNAME', 'Ulabel', 'ULABEL', 'U', 'KDEFEK', 'KEDALAMAN_EFEKTIF', 'KEDALAMAN'],
+  Xname: ['Xname', 'XNAME', 'Xlabel', 'XLABEL', 'X', 'TEKSTUR', 'TEKSTUR_TANAH'],
+  Dname: ['Dname', 'DNAME', 'Dlabel', 'DLABEL', 'D', 'DRAINS', 'DRAINASE'],
+  Ename: ['Ename', 'ENAME', 'Elabel', 'ELABEL', 'E', 'EROSI', 'TINGKAT_EROSI'],
+  LERENG: ['LERENG', 'Lname', 'LNAME', 'Llabel', 'L', 'KELERENGAN'],
+  KDEFEK: ['KDEFEK', 'Uname', 'UNAME', 'Ulabel', 'U', 'KEDALAMAN_EFEKTIF', 'KEDALAMAN'],
+  TEKSTUR: ['TEKSTUR', 'Xname', 'XNAME', 'Xlabel', 'X', 'TEKSTUR_TANAH'],
+  DRAINS: ['DRAINS', 'Dname', 'DNAME', 'Dlabel', 'D', 'DRAINASE'],
+  EROSI: ['EROSI', 'Ename', 'ENAME', 'Elabel', 'E', 'TINGKAT_EROSI'],
+  L: ['L', 'Lname', 'LNAME', 'Llabel', 'LERENG'],
+  U: ['U', 'Uname', 'UNAME', 'Ulabel', 'KDEFEK'],
+  X: ['X', 'Xname', 'XNAME', 'Xlabel', 'TEKSTUR'],
+  D: ['D', 'Dname', 'DNAME', 'Dlabel', 'DRAINS'],
+  E: ['E', 'Ename', 'ENAME', 'Elabel', 'EROSI']
 };
 
 const QNAME5_TO_QREKLAS_MAP = {
@@ -614,14 +733,25 @@ export function dissolveByAnalysisIndicator(featureCollection, indicatorKey) {
     'KPTNH',
     'Lname',
     'Llabel',
+    'LERENG',
+    'L',
     'Uname',
     'Ulabel',
+    'KDEFEK',
+    'U',
     'Xname',
     'Xlabel',
+    'TEKSTUR',
+    'X',
     'Dname',
     'Dlabel',
+    'DRAINS',
+    'D',
     'Ename',
-    'Elabel'
+    'Elabel',
+    'EROSI',
+    'E',
+    'OPTIMALTNH'
   ]);
   const resolvedGroupCols = orderedGroupFields
     .map((f) => ({
@@ -685,8 +815,25 @@ export function dissolveByAnalysisIndicator(featureCollection, indicatorKey) {
       const { canonical, actual } = resolvedGroupCols[c];
       const rawVal = sampleProps[actual];
       orderedProps[canonical] = rawVal !== undefined && rawVal !== null ? rawVal : '';
+      if (actual && actual !== canonical) {
+        orderedProps[actual] = rawVal !== undefined && rawVal !== null ? rawVal : '';
+      }
     }
     orderedProps.LUAS_HA = Number(areaSum.toFixed(6));
+
+    // Ensure fallback property mirrors are populated for Kemampuan Tanah
+    if (orderedProps.Lname && !orderedProps.LERENG) orderedProps.LERENG = orderedProps.Lname;
+    if (orderedProps.LERENG && !orderedProps.Lname) orderedProps.Lname = orderedProps.LERENG;
+    if (orderedProps.Uname && !orderedProps.KDEFEK) orderedProps.KDEFEK = orderedProps.Uname;
+    if (orderedProps.KDEFEK && !orderedProps.Uname) orderedProps.Uname = orderedProps.KDEFEK;
+    if (orderedProps.Xname && !orderedProps.TEKSTUR) orderedProps.TEKSTUR = orderedProps.Xname;
+    if (orderedProps.TEKSTUR && !orderedProps.Xname) orderedProps.Xname = orderedProps.TEKSTUR;
+    if (orderedProps.Dname && !orderedProps.DRAINS) orderedProps.DRAINS = orderedProps.Dname;
+    if (orderedProps.DRAINS && !orderedProps.Dname) orderedProps.Dname = orderedProps.DRAINS;
+    if (orderedProps.Ename && !orderedProps.EROSI) orderedProps.EROSI = orderedProps.Ename;
+    if (orderedProps.EROSI && !orderedProps.Ename) orderedProps.Ename = orderedProps.EROSI;
+    if (orderedProps.OPTNH && !orderedProps.OPTIMALTNH) orderedProps.OPTIMALTNH = orderedProps.OPTNH;
+    if (orderedProps.OPTIMALTNH && !orderedProps.OPTNH) orderedProps.OPTNH = orderedProps.OPTIMALTNH;
 
     // Filter internal arcs & stitch outer/hole boundaries (also normalizes single-feature MultiPolygons)
     const closedVidsList = [];

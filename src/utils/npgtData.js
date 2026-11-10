@@ -6,11 +6,11 @@ import { dissolveByAnalysisIndicator, deriveQreklas } from './spatialDissolve.js
 import { calculatePolygonArea } from './spatialCalculations.js';
 
 export const CAPABILITY_MODES = [
-  { mode: "L", column: "Lname", fallbackCol: "Llabel", title: "Kelerengan Tanah (L)" },
-  { mode: "U", column: "Uname", fallbackCol: "Ulabel", title: "Kedalaman Efektif Tanah (U)" },
-  { mode: "X", column: "Xname", fallbackCol: "Xlabel", title: "Tekstur Tanah (X)" },
-  { mode: "D", column: "Dname", fallbackCol: "Dlabel", title: "Drainase Tanah (D)" },
-  { mode: "E", column: "Ename", fallbackCol: "Elabel", title: "Tingkat Erosi (E)" }
+  { mode: "L", column: "Lname", fallbackCol: "Llabel", replacementCol: "LERENG", title: "Kelerengan Tanah (L)" },
+  { mode: "U", column: "Uname", fallbackCol: "Ulabel", replacementCol: "KDEFEK", title: "Kedalaman Efektif Tanah (U)" },
+  { mode: "X", column: "Xname", fallbackCol: "Xlabel", replacementCol: "TEKSTUR", title: "Tekstur Tanah (X)" },
+  { mode: "D", column: "Dname", fallbackCol: "Dlabel", replacementCol: "DRAINS", title: "Drainase Tanah (D)" },
+  { mode: "E", column: "Ename", fallbackCol: "Elabel", replacementCol: "EROSI", title: "Tingkat Erosi (E)" }
 ];
 
 export const indicators = [
@@ -33,6 +33,157 @@ export const groups = [
   "Rekomendasi dan Penataan Aset"
 ];
 
+export const INDICATOR_DETAILS = {
+  QNAME5: {
+    title: "Gambaran Penggunaan Tanah",
+    subtitle: "Data Dasar Penatagunaan Tanah",
+    source: "Interpretasi Citra Satelit Resolusi Tinggi & Verifikasi Lapang Tematik",
+    formula: "Tutupan Lahan Eksisting (QNAME5) & Reklasifikasi Makro (QREKLAS)",
+    purpose: "Menyajikan sebaran spasial dan komposisi luas tutupan tanah aktual di tingkat tapak kecamatan sebagai fondasi evaluasi tata ruang.",
+    categories: [
+      { code: "Pertanian", desc: "Sawah irigasi/tadah hujan, kebun campuran, dan tegalan/ladang" },
+      { code: "Lahan Basah", desc: "Tambak budidaya perikanan, perairan, dan payau" },
+      { code: "Hutan", desc: "Hutan mangrove pesisir, vegetasi alami, dan semak" },
+      { code: "Permukiman", desc: "Kawasan hunian, perdesaan, perdagangan, dan fasilitas sosial" },
+      { code: "Lahan Terbuka", desc: "Tanah belum dimanfaatkan atau dalam transisi pembangunan" }
+    ],
+    implication: "Menjadi basis data awal untuk diuji silang terhadap rencana pola ruang dan daya dukung kemampuan tanah."
+  },
+  Lname: {
+    title: "Gambaran Kemampuan Tanah",
+    subtitle: "Data Karakteristik Fisik Lingkungan",
+    source: "Peta Satuan Kemampuan Lahan (SKL) / Peta Tanah Tinjau BPN & BIG",
+    formula: "Kelerengan (L) + Kedalaman Efektif (U) + Tekstur (X) + Drainase (D) + Erosi (E)",
+    purpose: "Mengidentifikasi batas toleransi dan daya dukung alamiah tanah agar pemanfaatan ruang tidak menimbulkan risiko bencana atau degradasi lingkungan.",
+    categories: [
+      { code: "L (Lereng)", desc: "Datar (0-2%), Landai (2-15%), Agak Curam (15-40%), Curam (>40%)" },
+      { code: "U (Kedalaman)", desc: "Kedalaman solum perakaran: tipis (<30cm) s/d sangat tebal (>90cm)" },
+      { code: "X (Tekstur)", desc: "Fraksi butir tanah: halus (lempung), agak halus, sedang, s/d kasar" },
+      { code: "D (Drainase)", desc: "Kondisi kebasahan: baik, bebas genangan, s/d tergenang periodik" },
+      { code: "E (Erosi)", desc: "Tingkat pengikisan tanah: tidak ada, ringan, sedang, s/d berat" }
+    ],
+    implication: "Menjadi faktor pembatas utama dalam menguji kompatibilitas rencana tata ruang dan keoptimalan penggunaan tanah."
+  },
+  KSPOLA: {
+    title: "Kesesuaian Penggunaan Tanah terhadap RTRW",
+    subtitle: "Analisis Evaluasi Keselarasan Tata Ruang",
+    source: "Overlay Penggunaan Tanah Eksisting (QNAME5) × Rencana Pola Ruang (RTRW/RDTR)",
+    formula: "Penggunaan Tanah (QNAME5) × Rencana Pola Ruang (RTRW)",
+    purpose: "Mengevaluasi sejauh mana pemanfaatan tanah aktual telah tertib dan mematuhi peruntukan ruang legal sesuai peraturan daerah tata ruang.",
+    categories: [
+      { code: "Sesuai", desc: "Penggunaan tanah saat ini sejalan penuh dengan fungsi peruntukan rencana pola ruang (misal: sawah di zona pertanian, permukiman di zona permukiman)." },
+      { code: "Mendukung", desc: "Penggunaan tanah bersifat komplementer atau menunjang fungsi peruntukan ruang (misal: kebun rakyat di zona penyangga)." },
+      { code: "Tidak Sesuai", desc: "Penggunaan tanah menyimpang atau bertentangan dengan peruntukan ruang (misal: tambak di sempadan lindung, industri di kawasan pangan)." }
+    ],
+    implication: "Bidang tanah 'Tidak Sesuai' menjadi prioritas penertiban izin atau bahan peninjauan kembali Perda RTRW pada periode revisi berikutnya."
+  },
+  COMPATB: {
+    title: "Kompatibilitas Pola Ruang terhadap Fisik Tanah",
+    subtitle: "Analisis Kelayakan Daya Dukung Ruang",
+    source: "Overlay Rencana Pola Ruang (RTRW) × Karakteristik Kemampuan Fisik Tanah (KPTNH)",
+    formula: "Pola Ruang RTRW × Kemampuan Fisik Tanah (KPTNH)",
+    purpose: "Menguji apakah alokasi peruntukan ruang dalam dokumen RTRW aman dan layak ditampung oleh karakteristik fisik tanah tanpa risiko bencana.",
+    categories: [
+      { code: "Kompatibel", desc: "Karakteristik fisik tanah (lereng, drainase, daya dukung) memadai dan aman untuk menampung fungsi rencana pola ruang." },
+      { code: "Tidak Kompatibel", desc: "Rencana pola ruang dialokasikan pada tanah yang fisiknya tidak layak (misal: permukiman di lereng curam rawan longsor atau zona rawan genangan pasang)." }
+    ],
+    implication: "Wilayah 'Tidak Kompatibel' merupakan peringatan keras bagi perencana tata ruang untuk merevisi alokasi fungsi ruang sebelum timbul kerugian infrastruktur."
+  },
+  OPTNH: {
+    title: "Keoptimalan Penggunaan Tanah terhadap Fisik Tanah",
+    subtitle: "Analisis Efisiensi Pemanfaatan Sumber Daya Tanah",
+    source: "Overlay Penggunaan Tanah Eksisting (QNAME5) × Kemampuan Fisik Tanah (KPTNH)",
+    formula: "Penggunaan Tanah (QNAME5) × Kemampuan Fisik Tanah (KPTNH)",
+    purpose: "Menilai apakah kegiatan eksisting di lapangan sudah memanfaatkan potensi tanah secara optimal dan berkesinambungan tanpa eksploitasi berlebih.",
+    categories: [
+      { code: "Optimal", desc: "Pemanfaatan tanah seimbang dengan kemampuan alamiah tanah, menghasilkan produktivitas lestari." },
+      { code: "Tidak Optimal", desc: "Terjadi pemanfaatan di bawah kapasitas potensi (under-utilized) atau eksploitasi melebihi daya dukung yang memicu degradasi lingkungan." }
+    ],
+    implication: "Kawasan 'Tidak Optimal' memerlukan intervensi teknologi pertanian, perbaikan tata air drainase, atau alih fungsi komoditas."
+  },
+  Vname: {
+    title: "Ketersediaan Tanah untuk Pembangunan",
+    subtitle: "Analisis Penyaringan Cadangan Ruang",
+    source: "Overlay Status Kawasan (FKWS di APL) × Kesesuaian Tata Ruang (KSPOLA) × Penguasaan Tanah (GUPT)",
+    formula: "Status Kawasan (APL) × Kesesuaian Ruang × Penguasaan Hak",
+    purpose: "Menyaring dan mengidentifikasi cadangan bidang tanah yang bebas dari kawasan hutan negara dan siap diarahkan untuk ekspansi pembangunan baru.",
+    categories: [
+      { code: "Tersedia", desc: "Lahan non-terbangun yang berada di APL (Area Penggunaan Lain) dan secara yuridis serta fisik dapat diarahkan pemanfaatannya." },
+      { code: "Tidak Tersedia", desc: "Kawasan hutan negara, permukiman terbangun padat, fasilitas umum permanen, atau badan air alami." }
+    ],
+    implication: "Menjadi acuan dasar dalam pemenuhan kebutuhan tanah investasi, fasilitas umum, perumahan, dan ketahanan pangan daerah."
+  },
+  V_Arahan: {
+    title: "Arahan Ketersediaan Tanah",
+    subtitle: "Analisis Alokasi Fungsional Ruang Tersedia",
+    source: "Tanah Tersedia (Vname) × Rencana Pola Ruang RTRW × Daya Dukung Fisik",
+    formula: "Tanah Tersedia (Vname) × Arahan Tata Ruang",
+    purpose: "Memberikan arahan kebijakan peruntukan bagi tanah yang telah dinyatakan 'Tersedia' agar pemanfaatannya terstruktur dan terarah.",
+    categories: [
+      { code: "Optimalisasi", desc: "Lahan diarahkan untuk peningkatan intensitas penggunaan eksisting." },
+      { code: "Penyesuaian", desc: "Lahan diarahkan untuk dialihfungsikan agar selaras dengan rencana tata ruang." },
+      { code: "Permukiman", desc: "Lahan diarahkan untuk pengembangan kawasan perumahan perkotaan/perdesaan." },
+      { code: "Industri", desc: "Lahan diarahkan untuk kawasan industri, manufaktur, dan pergudangan." },
+      { code: "Pertanian", desc: "Lahan diarahkan untuk perlindungan dan intensifikasi pertanian pangan." }
+    ],
+    implication: "Dijadikan pertimbangan teknis dalam pemberian Kesesuaian Kegiatan Pemanfaatan Ruang (KKPR)."
+  },
+  V_Khusus: {
+    title: "Arahan Khusus Sektoral Wilayah",
+    subtitle: "Analisis Prioritas Sektor Strategis Daerah",
+    source: "Tanah Tersedia (Vname) × Target Sektoral Prioritas (Permukiman, Industri, Pertanian)",
+    formula: "Tanah Tersedia × Sektor Prioritas",
+    purpose: "Memfokuskan tanah tersedia pada 3 pilar pembangunan strategis: penyediaan perumahan rakyat, hilirisasi industri, dan ketahanan pangan.",
+    categories: [
+      { code: "Permukiman", desc: "Alokasi tanah tersedia untuk kebutuhan perumahan dan infrastruktur permukiman." },
+      { code: "Industri", desc: "Alokasi tanah tersedia untuk kawasan industri dan logistik penunjang investasi." },
+      { code: "Pertanian", desc: "Alokasi tanah tersedia untuk pencadangan Lahan Pertanian Pangan Berkelanjutan (LP2B)." },
+      { code: "Non-Khusus", desc: "Kawasan yang tidak masuk dalam 3 prioritas sektoral khusus." }
+    ],
+    implication: "Membantu sinkronisasi program OPD sektoral (Dinas Perumahan, Dinas Perindustrian, Dinas Pertanian) dengan BPN."
+  },
+  REKOMTNH: {
+    title: "Rekomendasi Penatagunaan Tanah",
+    subtitle: "Sintesis Kebijakan Terpadu NPGT",
+    source: "Sintesis 3 Matriks Evaluasi: KSPOLA × COMPATB × OPTNH",
+    formula: "KSPOLA × COMPATB × OPTNH",
+    purpose: "Menyusun rumusan kebijakan operasional bagi instansi pengelola tata ruang, kantor pertanahan, dan pemerintah daerah.",
+    categories: [
+      { code: "Penyesuaian Pola Ruang", desc: "Pola ruang RTRW direkomendasikan diubah menyesuaikan kondisi fisik tanah nyata." },
+      { code: "Penyesuaian Penggunaan", desc: "Pola ruang dipertahankan, izin dan pemanfaatan tanah di lapangan ditertibkan." },
+      { code: "Pertahankan Mantap", desc: "Zona yang telah selaras, optimal, dan kompatibel wajib dipertahankan kelestariannya." },
+      { code: "Konservasi Fisik", desc: "Kawasan lindung sempadan pantai/sungai wajib dimoratorium dari alih fungsi." }
+    ],
+    implication: "Menjadi dokumen masukan resmi BPN dalam peninjauan kembali (PK) Perda Rencana Tata Ruang Wilayah."
+  },
+  PASET: {
+    title: "Potensi Penataan Aset Reforma Agraria",
+    subtitle: "Analisis Tanah Objek Reforma Agraria (TORA)",
+    source: "Penguasaan Tanah (GUPT) × Status Kawasan (FKWS) × Indikasi Tanah Terlantar / Tanah Negara Bebas",
+    formula: "Penguasaan Tanah × Status Kawasan × Penguasaan Riil",
+    purpose: "Mengidentifikasi bidang tanah yang berpeluang diredistribusikan atau dilegalisasi guna mendukung keadilan penguasaan tanah rakyat.",
+    categories: [
+      { code: "Potensi Langsung", desc: "Tanah garapan/kebun rakyat di tanah non-sengketa yang memenuhi syarat langsung redistribusi TORA." },
+      { code: "Potensi Bersyarat", desc: "Kawasan yang memerlukan penegasan batas pelepasan kawasan hutan atau klarifikasi riwayat hak." },
+      { code: "Tidak Berpotensi", desc: "Tanah yang telah bersertifikat hak milik/HGB aktif atau berstatus fasilitas umum pemerintah." }
+    ],
+    implication: "Menjadi bahan kerja Gugus Tugas Reforma Agraria (GTRA) Kabupaten/Kota untuk percepatan redistribusi tanah."
+  }
+};
+
+export function getIndicatorDetails(key) {
+  if (!key) return null;
+  if (INDICATOR_DETAILS[key]) return INDICATOR_DETAILS[key];
+  if (key === 'OPTIMALTNH') return INDICATOR_DETAILS.OPTNH;
+  if (key === 'QREKLAS') return INDICATOR_DETAILS.QNAME5;
+  if ([
+    'Lname', 'Uname', 'Xname', 'Dname', 'Ename',
+    'LERENG', 'KDEFEK', 'TEKSTUR', 'DRAINS', 'EROSI',
+    'L', 'U', 'X', 'D', 'E'
+  ].includes(key)) return INDICATOR_DETAILS.Lname;
+  return null;
+}
+
 export const FIELD_LABELS = {
   QNAME5: "Penggunaan Tanah Eksisting",
   QREKLAS: "Reklasifikasi Penggunaan Tanah",
@@ -43,17 +194,28 @@ export const FIELD_LABELS = {
   KPTNH: "Karakteristik Fisik Kemampuan Tanah",
   Lname: "Kelerengan Tanah",
   Llabel: "Kode Lereng (L)",
+  LERENG: "Kelerengan Tanah (L)",
+  L: "Kelerengan Tanah (L)",
   Uname: "Kedalaman Efektif Tanah",
   Ulabel: "Kode Kedalaman (U)",
+  KDEFEK: "Kedalaman Efektif Tanah (U)",
+  U: "Kedalaman Efektif Tanah (U)",
   Xname: "Tekstur Tanah",
   Xlabel: "Kode Tekstur (X)",
+  TEKSTUR: "Tekstur Tanah (X)",
+  X: "Tekstur Tanah (X)",
   Dname: "Drainase Tanah",
   Dlabel: "Kode Drainase (D)",
+  DRAINS: "Drainase Tanah (D)",
+  D: "Drainase Tanah (D)",
   Ename: "Tingkat Erosi",
   Elabel: "Kode Erosi (E)",
+  EROSI: "Tingkat Erosi (E)",
+  E: "Tingkat Erosi (E)",
   KSPOLA: "Kesesuaian Penggunaan Tanah",
   COMPATB: "Kompatibilitas Tanah",
   OPTNH: "Keoptimalan Tanah",
+  OPTIMALTNH: "Keoptimalan Tanah (OPTNH)",
   VnameO: "Ketersediaan terhadap GUPT",
   VnameW: "Ketersediaan terhadap Pola Ruang",
   Vname: "Status Ketersediaan Tanah",
@@ -326,7 +488,46 @@ export function hasQreklasColumn(layerOrFc) {
 }
 
 /**
- * Checks whether a layer or GeoJSON FeatureCollection contains Kemampuan Tanah (L, U, X, D, E) columns.
+ * Resolves the actual capability property column name for a given mode ('L', 'U', 'X', 'D', 'E').
+ * Priority:
+ * 1. Standard full column name (Lname, Uname, Xname, Dname, Ename)
+ * 2. Standard label column name (Llabel, Ulabel, Xlabel, Dlabel, Elabel)
+ * 3. Single-letter code (L, U, X, D, E)
+ * 4. Fallback replacement column if L, U, X, D, E are absent:
+ *    - L -> LERENG
+ *    - U -> KDEFEK
+ *    - X -> TEKSTUR
+ *    - D -> DRAINS
+ *    - E -> EROSI
+ */
+export function findCapabilityColumn(layerOrFc, mode = "L") {
+  const modeSpec = CAPABILITY_MODES.find((m) => m.mode === mode) || CAPABILITY_MODES[0];
+  const fc = layerOrFc?.sourceData || layerOrFc?.data || layerOrFc;
+  const features = fc?.features;
+  if (!Array.isArray(features) || features.length === 0) return modeSpec.column;
+
+  const sampleProps = features[0]?.properties || {};
+  const lowerMap = new Map();
+  Object.keys(sampleProps).forEach((k) => lowerMap.set(k.toLowerCase(), k));
+
+  const candidateKeys = [
+    modeSpec.column,
+    modeSpec.fallbackCol,
+    modeSpec.mode,
+    modeSpec.replacementCol
+  ];
+
+  for (const c of candidateKeys) {
+    if (!c) continue;
+    const match = lowerMap.get(c.toLowerCase());
+    if (match) return match;
+  }
+  return modeSpec.column;
+}
+
+/**
+ * Checks whether a layer or GeoJSON FeatureCollection contains Kemampuan Tanah (L, U, X, D, E) columns
+ * or their replacement columns (LERENG, KDEFEK, TEKSTUR, DRAINS, EROSI).
  */
 export function hasLandCapabilityColumns(layerOrFc) {
   if (!layerOrFc) return false;
@@ -336,7 +537,12 @@ export function hasLandCapabilityColumns(layerOrFc) {
   if (!Array.isArray(features) || features.length === 0) return false;
 
   const sampleProps = features[0]?.properties || {};
-  const capCols = ["lname", "uname", "xname", "dname", "ename", "llabel", "ulabel", "xlabel", "dlabel", "elabel"];
+  const capCols = [
+    "lname", "uname", "xname", "dname", "ename",
+    "llabel", "ulabel", "xlabel", "dlabel", "elabel",
+    "l", "u", "x", "d", "e",
+    "lereng", "kdefek", "tekstur", "drains", "erosi"
+  ];
   const matchingKeys = Object.keys(sampleProps).filter((k) => capCols.includes(k.toLowerCase()));
   if (matchingKeys.length === 0) return false;
 
@@ -356,13 +562,15 @@ export function parseAnalysis(records) {
   if (!records || !records.length) return [];
   const columns = new Map(Object.keys(records[0] ?? {}).map((key) => [key.toLowerCase(), key]));
   const aliases = {
+    OPTNH: ["OPTNH", "OPTIMALTNH", "OPTIMAL_TNH", "KEOPTIMALAN"],
+    OPTIMALTNH: ["OPTIMALTNH", "OPTNH", "OPTIMAL_TNH", "KEOPTIMALAN"],
     KSPOLA: ["KSPOLA", "KS_POLA"],
     QREKLAS: ["QREKLAS", "Q_REKLAS"],
-    Lname: ["Lname", "LNAME", "Llabel", "LLABEL"],
-    Uname: ["Uname", "UNAME", "Ulabel", "ULABEL"],
-    Xname: ["Xname", "XNAME", "Xlabel", "XLABEL"],
-    Dname: ["Dname", "DNAME", "Dlabel", "DLABEL"],
-    Ename: ["Ename", "ENAME", "Elabel", "ELABEL"],
+    Lname: ["Lname", "LNAME", "Llabel", "LLABEL", "L", "LERENG", "KELERENGAN"],
+    Uname: ["Uname", "UNAME", "Ulabel", "ULABEL", "U", "KDEFEK", "KEDALAMAN_EFEKTIF", "KEDALAMAN"],
+    Xname: ["Xname", "XNAME", "Xlabel", "XLABEL", "X", "TEKSTUR", "TEKSTUR_TANAH"],
+    Dname: ["Dname", "DNAME", "Dlabel", "DLABEL", "D", "DRAINS", "DRAINASE"],
+    Ename: ["Ename", "ENAME", "Elabel", "ELABEL", "E", "EROSI", "TINGKAT_EROSI"],
     LUAS_HA: ["LUAS_HA", "LUAS", "SHAPE_AREA", "AREA_HA"],
     WADMKD: ["WADMKD", "DESA", "KELURAHAN", "NAMOBJ"],
     WADMKC: ["WADMKC", "KECAMATAN"],
@@ -400,11 +608,20 @@ export function parseAnalysis(records) {
       row.QREKLAS = String(get(record, "QREKLAS")).trim() || "(kosong)";
     }
 
-    CAPABILITY_MODES.forEach(({ column }) => {
-      if (columnFor(column)) {
-        row[column] = String(get(record, column)).trim() || "(kosong)";
+    CAPABILITY_MODES.forEach(({ column, replacementCol }) => {
+      const val = get(record, column);
+      if (val) {
+        const strVal = String(val).trim() || "(kosong)";
+        row[column] = strVal;
+        if (replacementCol) {
+          row[replacementCol] = strVal;
+        }
       }
     });
+
+    // Mirror OPTNH and OPTIMALTNH
+    if (row.OPTNH && !row.OPTIMALTNH) row.OPTIMALTNH = row.OPTNH;
+    if (row.OPTIMALTNH && !row.OPTNH) row.OPTNH = row.OPTIMALTNH;
 
     return row;
   });
@@ -511,10 +728,11 @@ export function buildLandUseLayerVariant(layer, targetMode = "QNAME5") {
  */
 export function buildLandCapabilityLayerVariant(layer, targetMode = "L") {
   const modeSpec = CAPABILITY_MODES.find((m) => m.mode === targetMode) || CAPABILITY_MODES[0];
-  const col = modeSpec.column;
   const sourceGeoJson = layer?.sourceData || layer?.data;
   if (!sourceGeoJson?.features?.length) return layer;
 
+  // Resolves actual column: checks Lname/Llabel/L or fallback LERENG
+  const col = findCapabilityColumn(sourceGeoJson, modeSpec.mode);
   const dissolvedData = dissolveByAnalysisIndicator(sourceGeoJson, col);
   const dissolvedFeatures = dissolvedData.features || [];
 
@@ -524,7 +742,14 @@ export function buildLandCapabilityLayerVariant(layer, targetMode = "L") {
 
   for (let i = 0; i < dissolvedFeatures.length; i++) {
     const props = dissolvedFeatures[i].properties || {};
-    const val = String(props[col] || props[modeSpec.fallbackCol] || "").trim() || "(kosong)";
+    const val = String(
+      props[col] ||
+      props[modeSpec.column] ||
+      props[modeSpec.fallbackCol] ||
+      props[modeSpec.replacementCol] ||
+      props[modeSpec.mode] ||
+      ""
+    ).trim() || "(kosong)";
     const ha = Number(props.LUAS_HA) || 0;
     valMap.set(val, (valMap.get(val) || 0) + 1);
     areaMap.set(val, (areaMap.get(val) || 0) + ha);
@@ -577,19 +802,30 @@ export function create8NpgtLayers(baseLayer) {
   const sourceHasCapability = hasLandCapabilityColumns(sourceGeoJson);
 
   return indicators.map((ind, index) => {
+    // For Kemampuan Tanah, resolve active column from source: Lname or fallback LERENG
+    const resolvedColumn = ind.isLandCapability
+      ? findCapabilityColumn(sourceGeoJson, "L")
+      : ind.key;
+
     // 1. Dissolve geometries & retain only ordered lineage + administrative fields for this analysis
-    const dissolvedData = dissolveByAnalysisIndicator(sourceGeoJson, ind.key);
+    const dissolvedData = dissolveByAnalysisIndicator(sourceGeoJson, resolvedColumn);
     const dissolvedFeatures = dissolvedData.features || [];
 
     // 2. Identify indicator values, feature counts, and hectare sums on dissolved features
     const valMap = new Map();
     const areaMap = new Map();
     let totalAreaHa = 0;
-    const resolvedColumn = ind.key;
 
     for (let i = 0; i < dissolvedFeatures.length; i++) {
       const props = dissolvedFeatures[i].properties || {};
-      const val = String(props[resolvedColumn] || "").trim() || "(kosong)";
+      const val = String(
+        props[resolvedColumn] ||
+        (ind.key === "OPTNH" ? props.OPTIMALTNH : "") ||
+        (ind.isLandCapability
+          ? props.Lname || props.LERENG || props.L || props.Llabel
+          : "") ||
+        ""
+      ).trim() || "(kosong)";
       const ha = Number(props.LUAS_HA) || 0;
       valMap.set(val, (valMap.get(val) || 0) + 1);
       areaMap.set(val, (areaMap.get(val) || 0) + ha);

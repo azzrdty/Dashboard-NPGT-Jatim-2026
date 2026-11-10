@@ -195,7 +195,7 @@ export default function UploadModal({
                       8 Layer Analisis DJPA — NPGT Kecamatan Lengkap (Ter-Dissolve)
                     </span>
                     <span className="block text-[11px] text-slate-300/80 mt-0.5">
-                      Memuat 8 indikator: KSPOLA, COMPATB, OPTNH, Vname, V_Arahan, V_Khusus, REKOMTNH, PASET
+                      Memuat 8 indikator: KSPOLA, COMPATB, OPTNH / OPTIMALTNH, Vname, V_Arahan, V_Khusus, REKOMTNH, PASET
                     </span>
                   </div>
                 </div>

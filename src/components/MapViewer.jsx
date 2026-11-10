@@ -14,7 +14,9 @@ import {
   Compass,
   Upload,
   Sparkles,
-  MousePointerClick
+  MousePointerClick,
+  Filter,
+  X
 } from 'lucide-react';
 import {
   calculateBBox,
@@ -127,7 +129,7 @@ function getAdaptiveOutlineWeight(baseWeight, zoom) {
 // Build Leaflet style function for a given layer & zoom level
 // Note (Opsi 1): Layer transparency (layer.fillOpacity) is applied at the <canvas> DOM container level,
 // while internal Canvas paths are drawn at 100% opacity (1.0) to eliminate sub-pixel alpha seams.
-function buildLayerStyleFn(layer, zoom) {
+function buildLayerStyleFn(layer, zoom, legendSelectedCategory = null) {
   const defaultColor = layer.color || '#3b82f6';
   const thematicCol = layer.thematic?.column;
   const colorMap = layer.thematic?.colorMap;
@@ -139,12 +141,45 @@ function buildLayerStyleFn(layer, zoom) {
   // Opsi 1: 100% opaque seam-welding stroke in the exact same fillColor
   const antiGapWeight = zoom <= 11 ? 1.5 : zoom <= 13 ? 1.15 : 0.85;
 
+  const isLayerFiltered = Boolean(
+    legendSelectedCategory && legendSelectedCategory.layerId === layer.id
+  );
+  const targetCategoryVal = isLayerFiltered ? legendSelectedCategory.value : null;
+
   return (feature) => {
     let fillColor = defaultColor;
+    let val = '';
     if (thematicCol && colorMap) {
-      const val = String(feature?.properties?.[thematicCol] || '').trim() || '(kosong)';
+      val = String(feature?.properties?.[thematicCol] || '').trim() || '(kosong)';
       if (colorMap[val]) {
         fillColor = colorMap[val];
+      }
+    }
+
+    if (isLayerFiltered) {
+      const matches = val === targetCategoryVal;
+      if (matches) {
+        return {
+          stroke: true,
+          color: '#ffffff',
+          weight: Math.max(2.4, adaptiveWeight + 1.2),
+          opacity: 1.0,
+          lineJoin: 'round',
+          lineCap: 'round',
+          fillColor,
+          fillOpacity: 1.0
+        };
+      } else {
+        return {
+          stroke: true,
+          color: '#334155',
+          weight: 0.5,
+          opacity: 0.15,
+          lineJoin: 'round',
+          lineCap: 'round',
+          fillColor: '#070b12',
+          fillOpacity: 0.05
+        };
       }
     }
 
@@ -381,7 +416,9 @@ export default function MapViewer({
   zoomToTrigger,
   fitAllTrigger,
   onOpenUpload,
-  onToggleAllOutlines
+  onToggleAllOutlines,
+  legendSelectedCategory = null,
+  onClearLegendCategory
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -399,6 +436,9 @@ export default function MapViewer({
   const layerCacheRef = useRef(new Map());
   const onSelectFeatureRef = useRef(onSelectFeature);
   onSelectFeatureRef.current = onSelectFeature;
+
+  const legendSelectedCategoryRef = useRef(legendSelectedCategory);
+  legendSelectedCategoryRef.current = legendSelectedCategory;
 
   // Direct DOM refs for 60fps coordinate readout without triggering React re-renders
   const latLngSpanRef = useRef(null);
@@ -468,9 +508,20 @@ export default function MapViewer({
         const entry = entries[i];
         if (!entry.layerRef?.visible || !entry.geoJsonLayer) continue;
         let matchedSubLayer = null;
+        const isFilterActive = legendSelectedCategoryRef.current?.layerId === entry.layerRef.id;
+        const filterCol = legendSelectedCategoryRef.current?.column;
+        const filterVal = legendSelectedCategoryRef.current?.value;
+
         entry.geoJsonLayer.eachLayer((subLayer) => {
           if (!matchedSubLayer && subLayer._containsPoint && subLayer._containsPoint(layerPoint)) {
-            matchedSubLayer = subLayer;
+            if (isFilterActive && filterCol) {
+              const val = String(subLayer.feature?.properties?.[filterCol] || '').trim() || '(kosong)';
+              if (val === filterVal) {
+                matchedSubLayer = subLayer;
+              }
+            } else {
+              matchedSubLayer = subLayer;
+            }
           }
         });
         if (matchedSubLayer && matchedSubLayer.feature) {
@@ -601,7 +652,7 @@ export default function MapViewer({
       hoverGroup.clearLayers();
       layerCacheRef.current.forEach((entry) => {
         if (entry.layerRef?.visible && vectorGroup.hasLayer(entry.geoJsonLayer)) {
-          entry.geoJsonLayer.setStyle(buildLayerStyleFn(entry.layerRef, z));
+          entry.geoJsonLayer.setStyle(buildLayerStyleFn(entry.layerRef, z, legendSelectedCategoryRef.current));
         }
       });
     });
@@ -697,7 +748,8 @@ export default function MapViewer({
         pointRadius: layer.pointRadius,
         thematicCol: layer.thematic?.column,
         thematicPalette: layer.thematic?.palette,
-        thematicCount: layer.thematic?.categories?.length
+        thematicCount: layer.thematic?.categories?.length,
+        selectedCategory: legendSelectedCategory?.layerId === layer.id ? legendSelectedCategory.value : null
       });
 
       let entry = cache.get(layer.id);
@@ -718,7 +770,7 @@ export default function MapViewer({
           containerVisible: Boolean(layer.visible)
         });
 
-        const styleFn = buildLayerStyleFn(layer, currentZoom);
+        const styleFn = buildLayerStyleFn(layer, currentZoom, legendSelectedCategory);
 
         const geoJsonLayer = L.geoJSON(layer.data, {
           renderer: layerRenderer,
@@ -727,22 +779,25 @@ export default function MapViewer({
           pointToLayer: (feature, latlng) => {
             const currentLayer = cache.get(layer.id)?.layerRef || layer;
             let fillColor = currentLayer.color || '#3b82f6';
+            let val = '';
             if (currentLayer.thematic && currentLayer.thematic.column) {
-              const val = String(feature?.properties?.[currentLayer.thematic.column] || '').trim() || '(kosong)';
+              val = String(feature?.properties?.[currentLayer.thematic.column] || '').trim() || '(kosong)';
               if (currentLayer.thematic.colorMap && currentLayer.thematic.colorMap[val]) {
                 fillColor = currentLayer.thematic.colorMap[val];
               }
             }
+            const isFilterActive = legendSelectedCategory?.layerId === currentLayer.id;
+            const matches = !isFilterActive || val === legendSelectedCategory.value;
             const showOutline = currentLayer.stroke === true && (currentLayer.weight !== undefined ? currentLayer.weight > 0 : true);
             return L.circleMarker(latlng, {
               renderer: layerRenderer,
-              radius: currentLayer.pointRadius || 6,
+              radius: matches ? (currentLayer.pointRadius || 6) : 3,
               fillColor,
-              stroke: showOutline,
-              color: '#ffffff',
-              weight: showOutline ? 1.5 : 0,
-              opacity: showOutline ? 1 : 0,
-              fillOpacity: 1.0
+              stroke: showOutline || (matches && isFilterActive),
+              color: matches && isFilterActive ? '#ffffff' : '#ffffff',
+              weight: matches && isFilterActive ? 2.5 : (showOutline ? 1.5 : 0),
+              opacity: matches ? (showOutline ? 1 : 0) : 0.1,
+              fillOpacity: matches ? 1.0 : 0.08
             });
           }
         });
@@ -763,7 +818,7 @@ export default function MapViewer({
         }
         if (entry.styleKey !== styleKey) {
           entry.styleKey = styleKey;
-          entry.geoJsonLayer.setStyle(buildLayerStyleFn(layer, currentZoom));
+          entry.geoJsonLayer.setStyle(buildLayerStyleFn(layer, currentZoom, legendSelectedCategory));
         }
       }
 
@@ -775,7 +830,7 @@ export default function MapViewer({
         }
         if (!vectorGroup.hasLayer(entry.geoJsonLayer)) {
           vectorGroup.addLayer(entry.geoJsonLayer);
-          entry.geoJsonLayer.setStyle(buildLayerStyleFn(layer, currentZoom));
+          entry.geoJsonLayer.setStyle(buildLayerStyleFn(layer, currentZoom, legendSelectedCategory));
         }
       } else {
         if (entry.renderer) {
@@ -786,7 +841,31 @@ export default function MapViewer({
         }
       }
     });
-  }, [layers]);
+  }, [layers, legendSelectedCategory]);
+
+  // Auto-zoom to extent of matching category features from legend
+  useEffect(() => {
+    if (!legendSelectedCategory || !mapInstanceRef.current) return;
+    const lyr = layers.find((l) => l.id === legendSelectedCategory.layerId);
+    if (!lyr?.data?.features?.length) return;
+
+    const matchedFeatures = lyr.data.features.filter((f) => {
+      const val = String(f?.properties?.[legendSelectedCategory.column] || '').trim() || '(kosong)';
+      return val === legendSelectedCategory.value;
+    });
+
+    if (matchedFeatures.length > 0) {
+      const bbox = calculateBBox({ type: 'FeatureCollection', features: matchedFeatures });
+      if (bbox && mapInstanceRef.current) {
+        mapInstanceRef.current.fitBounds(bbox, {
+          padding: [70, 70],
+          maxZoom: 16,
+          animate: true,
+          duration: 0.75
+        });
+      }
+    }
+  }, [legendSelectedCategory, layers]);
 
   // 4. Highlight Selected Feature
   useEffect(() => {
@@ -1036,6 +1115,62 @@ export default function MapViewer({
             >
               <Upload className="size-4 stroke-[2.25]" />
               <span>Unggah Data Spasial / Pilih Simulasi</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Filter Legend Notification Pill */}
+      {legendSelectedCategory && (
+        <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B111A]/95 border border-teal-500/50 shadow-2xl backdrop-blur-md text-xs text-white animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="size-2.5 rounded-full shrink-0 shadow-sm border border-white/40"
+              style={{ backgroundColor: legendSelectedCategory.color || '#2dd4bf' }}
+            />
+            <span className="text-slate-300">
+              Menampilkan: <strong className="text-teal-300 font-semibold">{legendSelectedCategory.value}</strong>
+            </span>
+          </div>
+
+          {legendSelectedCategory.areaHa ? (
+            <span className="font-mono text-[11px] text-slate-400 border-l border-slate-700/80 pl-2">
+              {formatNumber(legendSelectedCategory.areaHa)} Ha
+            </span>
+          ) : null}
+
+          <div className="flex items-center gap-1 border-l border-slate-700/80 pl-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                const lyr = layers.find((l) => l.id === legendSelectedCategory.layerId);
+                if (lyr?.data?.features) {
+                  const matched = lyr.data.features.filter((f) => {
+                    const val = String(f?.properties?.[legendSelectedCategory.column] || '').trim() || '(kosong)';
+                    return val === legendSelectedCategory.value;
+                  });
+                  if (matched.length) {
+                    const b = calculateBBox({ type: 'FeatureCollection', features: matched });
+                    if (b && mapInstanceRef.current) {
+                      mapInstanceRef.current.fitBounds(b, { padding: [70, 70], maxZoom: 16 });
+                    }
+                  }
+                }
+              }}
+              title="Fokuskan kembali ke bidang poligon ini (Zoom to Extent)"
+              className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <Crosshair className="size-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={onClearLegendCategory}
+              title="Tampilkan semua bidang poligon (Reset Filter)"
+              className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+            >
+              <span>Semua</span>
+              <X className="size-3" />
             </button>
           </div>
         </div>

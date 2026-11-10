@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Layers,
   Eye,
@@ -17,7 +17,8 @@ import {
   Compass,
   Info,
   Square,
-  SquareDashed
+  SquareDashed,
+  X
 } from 'lucide-react';
 import { detectGeometryType } from '../utils/spatialCalculations';
 import {
@@ -25,7 +26,8 @@ import {
   formatNumber,
   hasQreklasColumn,
   hasLandCapabilityColumns,
-  CAPABILITY_MODES
+  CAPABILITY_MODES,
+  getIndicatorDetails
 } from '../utils/npgtData';
 
 const COLOR_PRESETS = [
@@ -71,15 +73,38 @@ export default function LayerPanel({
   onToggleCapabilityMode
 }) {
   const [expandedLayerId, setExpandedLayerId] = useState(null);
+  const [infoLayerId, setInfoLayerId] = useState(null);
 
   const toggleExpand = (id, e) => {
     e.stopPropagation();
     setExpandedLayerId((prev) => (prev === id ? null : id));
   };
 
+  const toggleInfo = (id, e) => {
+    e.stopPropagation();
+    setInfoLayerId((prev) => (prev === id ? null : id));
+  };
+
   const anyOutlineVisible = layers.some(
     (l) => l.stroke === true && (l.weight !== undefined ? l.weight > 0 : true)
   );
+
+  const activeInfoLayer = layers.find((l) => l.id === infoLayerId);
+  const activeNpgtInfo = activeInfoLayer
+    ? getIndicatorDetails(activeInfoLayer.npgtKey || (activeInfoLayer.hasNpgt ? 'QNAME5' : null))
+    : null;
+  const activeGeomType = activeInfoLayer ? detectGeometryType(activeInfoLayer.data) : null;
+
+  useEffect(() => {
+    if (!infoLayerId) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setInfoLayerId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [infoLayerId]);
 
   return (
     <aside className="flex flex-col h-full w-80 sm:w-86 bg-[#0A0F16] border-r border-slate-800/80 text-slate-200 select-none shrink-0 z-10">
@@ -149,7 +174,10 @@ export default function LayerPanel({
           layers.map((layer) => {
             const isActive = layer.id === activeLayerId;
             const isExpanded = layer.id === expandedLayerId;
+            const isInfoOpen = layer.id === infoLayerId;
+            const npgtInfo = getIndicatorDetails(layer.npgtKey || (layer.hasNpgt ? 'QNAME5' : null));
             const count = layer.data?.features?.length || 0;
+            const geomType = detectGeometryType(layer.data);
             const thematicCategories = getLayerThematicCategories(layer);
             const isLandUseLayer =
               layer.isLandUse || layer.npgtKey === 'QNAME5' || layer.npgtKey === 'QREKLAS';
@@ -159,14 +187,24 @@ export default function LayerPanel({
               layer.landUseMode || (layer.npgtKey === 'QREKLAS' ? 'QREKLAS' : 'QNAME5');
             const isLandCapabilityLayer =
               layer.isLandCapability ||
-              ['Lname', 'Uname', 'Xname', 'Dname', 'Ename'].includes(layer.npgtKey);
+              [
+                'Lname', 'Uname', 'Xname', 'Dname', 'Ename',
+                'LERENG', 'KDEFEK', 'TEKSTUR', 'DRAINS', 'EROSI',
+                'L', 'U', 'X', 'D', 'E'
+              ].includes(layer.npgtKey);
             const canToggleCapability =
               isLandCapabilityLayer &&
               Boolean(onToggleCapabilityMode) &&
               hasLandCapabilityColumns(layer);
             const currentCapabilityMode =
               layer.capabilityMode ||
-              CAPABILITY_MODES.find((m) => m.column === layer.npgtKey)?.mode ||
+              CAPABILITY_MODES.find(
+                (m) =>
+                  m.column === layer.npgtKey ||
+                  m.replacementCol === layer.npgtKey ||
+                  m.fallbackCol === layer.npgtKey ||
+                  m.mode === layer.npgtKey
+              )?.mode ||
               'L';
 
             return (
@@ -278,6 +316,19 @@ export default function LayerPanel({
 
                     {/* Quick action buttons */}
                     <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        title={isInfoOpen ? 'Tutup Informasi Layer' : 'Lihat Informasi & Metodologi Layer'}
+                        onClick={(e) => toggleInfo(layer.id, e)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isInfoOpen
+                            ? 'text-cyan-300 bg-cyan-500/20 ring-1 ring-cyan-500/40'
+                            : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800'
+                        }`}
+                      >
+                        <Info className="size-3.5" />
+                      </button>
+
                       <button
                         type="button"
                         title={layer.visible ? 'Sembunyikan Layer' : 'Tampilkan Layer'}
@@ -574,6 +625,159 @@ export default function LayerPanel({
         <span>Format: SHP, GeoJSON, KML, CSV</span>
         <span className="font-mono text-emerald-400">CRS: Auto-Detect / WGS84</span>
       </div>
+
+      {/* Pop-up Window Informasi Layer */}
+      {activeInfoLayer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setInfoLayerId(null)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-[#0B131E] border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] text-slate-200 select-text animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#070B10]/70">
+              <div className="flex items-center gap-2.5 min-w-0 pr-3">
+                <div className="size-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 grid place-items-center text-cyan-400 shrink-0">
+                  <Info className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white tracking-tight truncate">
+                    {activeNpgtInfo ? activeNpgtInfo.title : activeInfoLayer.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {activeNpgtInfo?.subtitle ? (
+                      <span className="rounded bg-cyan-500/15 px-2 py-0.2 text-[10px] font-medium text-cyan-300 border border-cyan-500/30">
+                        {activeNpgtInfo.subtitle}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400">
+                        Informasi & Spesifikasi Layer
+                      </span>
+                    )}
+                    {activeInfoLayer.npgtKey && (
+                      <span className="font-mono text-[10px] text-teal-300 bg-teal-500/10 px-1.5 py-0.2 rounded border border-teal-500/20">
+                        {activeInfoLayer.npgtKey}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setInfoLayerId(null)}
+                className="size-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 grid place-items-center transition-colors shrink-0 cursor-pointer"
+                title="Tutup (Esc)"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 overflow-y-auto text-xs leading-relaxed">
+              {activeNpgtInfo ? (
+                <>
+                  {/* Pertemuan Data / Formula */}
+                  <div className="rounded-xl bg-cyan-950/30 border border-cyan-500/25 p-3.5 space-y-1.5">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-cyan-300">
+                      Pertemuan Data & Formula Analisis
+                    </div>
+                    <div className="font-mono text-xs font-semibold text-cyan-100">
+                      {activeNpgtInfo.formula}
+                    </div>
+                    <div className="text-[11px] text-slate-300 pt-1 border-t border-cyan-500/15">
+                      <span className="text-slate-400 font-medium">Sumber Data Input:</span> {activeNpgtInfo.source}
+                    </div>
+                  </div>
+
+                  {/* Tujuan */}
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">
+                      Tujuan Analisis
+                    </span>
+                    <p className="text-slate-200 text-xs">
+                      {activeNpgtInfo.purpose}
+                    </p>
+                  </div>
+
+                  {/* Kategori Utama */}
+                  {activeNpgtInfo.categories?.length > 0 && (
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1.5">
+                        Kamus Klasifikasi Kategori
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                        {activeNpgtInfo.categories.map((c) => (
+                          <div key={c.code} className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px]">
+                            <span className="font-semibold text-teal-300 font-mono block">{c.code}</span>
+                            <span className="text-slate-400 text-[11px] mt-0.5 block">{c.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Implikasi Kebijakan */}
+                  <div className="rounded-xl bg-amber-950/25 border border-amber-500/25 p-3.5 space-y-1">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-amber-300">
+                      Implikasi Kebijakan & Rencana Tindak
+                    </div>
+                    <p className="text-amber-200/90 text-xs">
+                      {activeNpgtInfo.implication}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                /* General Vector Layer Info */
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-300">
+                    Layer data spasial vektor kustom ({activeGeomType}).
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-slate-500 block text-[10px] uppercase font-sans">Tipe Geometri</span>
+                      <span className="text-white font-semibold mt-1 block">{activeGeomType}</span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-slate-500 block text-[10px] uppercase font-sans">Jumlah Fitur</span>
+                      <span className="text-white font-semibold mt-1 block">{activeInfoLayer.data?.features?.length || 0} objek</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ringkasan Teknis Spasial */}
+              <div className="pt-3 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-400">
+                <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                  <span className="text-[9px] text-slate-500 uppercase block font-sans">Total Objek</span>
+                  <span className="text-slate-200 font-semibold">{activeInfoLayer.data?.features?.length || 0}</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                  <span className="text-[9px] text-slate-500 uppercase block font-sans">Luas Area</span>
+                  <span className="text-slate-200 font-semibold">{activeInfoLayer.totalAreaHa ? `${formatNumber(activeInfoLayer.totalAreaHa)} Ha` : '-'}</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                  <span className="text-[9px] text-slate-500 uppercase block font-sans">Sistem Koordinat</span>
+                  <span className="text-emerald-400 font-semibold">{activeInfoLayer.crsCode || 'EPSG:4326'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-slate-800 bg-[#070B10]/70 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setInfoLayerId(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

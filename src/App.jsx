@@ -40,6 +40,7 @@ export default function App() {
   // Spatial Layers list - starts empty by default (no dummy data)
   const [layers, setLayers] = useState([]);
   const [activeLayerId, setActiveLayerId] = useState(null);
+  const [legendSelectedCategory, setLegendSelectedCategory] = useState(null);
 
   // Selected feature for inspector
   const [selectedFeature, setSelectedFeature] = useState(null);
@@ -79,7 +80,11 @@ export default function App() {
     const hasCapabilityLayer = layers.some(
       (l) =>
         l.isLandCapability ||
-        ['Lname', 'Uname', 'Xname', 'Dname', 'Ename'].includes(l.npgtKey)
+        [
+          'Lname', 'Uname', 'Xname', 'Dname', 'Ename',
+          'LERENG', 'KDEFEK', 'TEKSTUR', 'DRAINS', 'EROSI',
+          'L', 'U', 'X', 'D', 'E'
+        ].includes(l.npgtKey)
     );
     if (hasDjpaSet && (!hasLandUseLayer || !hasCapabilityLayer)) {
       const baseDjpa = layers.find((l) => l.id.startsWith('djpa-layer-') && l.sourceData);
@@ -224,6 +229,14 @@ export default function App() {
     setLayers((prev) =>
       prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))
     );
+    setLegendSelectedCategory((prev) => (prev?.layerId === id ? null : prev));
+  }, []);
+
+  const handleSelectLegendCategory = useCallback((catInfo) => {
+    setLegendSelectedCategory(catInfo);
+    if (catInfo?.layerId) {
+      setActiveLayerId(catInfo.layerId);
+    }
   }, []);
 
   // Activate a layer; if it is one of the NPGT thematic layers, make it the active visible NPGT layer in 1 click
@@ -295,6 +308,7 @@ export default function App() {
     setLayers((prev) => prev.filter((l) => l.id !== id));
     setActiveLayerId((prev) => (prev === id ? null : prev));
     setTableLayerId((prev) => (prev === id ? null : prev));
+    setLegendSelectedCategory((prev) => (prev?.layerId === id ? null : prev));
     setSelectedFeatureLayer((prev) => {
       if (prev?.id === id) {
         setSelectedFeature(null);
@@ -343,6 +357,7 @@ export default function App() {
 
   // Toggle Gambaran Penggunaan Tanah layer between QNAME5 and QREKLAS
   const handleToggleLandUseMode = useCallback((layerId, targetMode) => {
+    setLegendSelectedCategory(null);
     setLayers((prev) =>
       prev.map((l) => {
         if (l.id !== layerId) return l;
@@ -360,6 +375,7 @@ export default function App() {
 
   // Toggle Gambaran Kemampuan Tanah layer between L, U, X, D, and E
   const handleToggleCapabilityMode = useCallback((layerId, targetMode) => {
+    setLegendSelectedCategory(null);
     setLayers((prev) =>
       prev.map((l) => {
         if (l.id !== layerId) return l;
@@ -386,9 +402,15 @@ export default function App() {
     const existing = layers.find(
       (l) =>
         l.npgtKey === indKey ||
+        (indKey === 'OPTNH' && l.npgtKey === 'OPTIMALTNH') ||
         (indKey === 'QNAME5' && (l.isLandUse || l.npgtKey === 'QNAME5' || l.npgtKey === 'QREKLAS')) ||
         (indKey === 'Lname' &&
-          (l.isLandCapability || ['Lname', 'Uname', 'Xname', 'Dname', 'Ename'].includes(l.npgtKey)))
+          (l.isLandCapability ||
+            [
+              'Lname', 'Uname', 'Xname', 'Dname', 'Ename',
+              'LERENG', 'KDEFEK', 'TEKSTUR', 'DRAINS', 'EROSI',
+              'L', 'U', 'X', 'D', 'E'
+            ].includes(l.npgtKey)))
     );
 
     if (existing) {
@@ -408,6 +430,7 @@ export default function App() {
           splitLayers.find(
             (l) =>
               l.npgtKey === indKey ||
+              (indKey === 'OPTNH' && l.npgtKey === 'OPTIMALTNH') ||
               (indKey === 'QNAME5' && l.isLandUse) ||
               (indKey === 'Lname' && l.isLandCapability)
           ) || splitLayers[0];
@@ -614,11 +637,15 @@ export default function App() {
                 fitAllTrigger={fitAllTrigger}
                 onOpenUpload={() => setIsUploadOpen(true)}
                 onToggleAllOutlines={handleToggleAllOutlines}
+                legendSelectedCategory={legendSelectedCategory}
+                onClearLegendCategory={() => setLegendSelectedCategory(null)}
               />
 
               {/* Floating Map Legend */}
               <LegendWidget
                 layers={layers}
+                selectedCategory={legendSelectedCategory}
+                onSelectCategory={handleSelectLegendCategory}
                 onOpenTable={(id) => setTableLayerId(id)}
                 onToggleLandUseMode={handleToggleLandUseMode}
                 onToggleCapabilityMode={handleToggleCapabilityMode}
